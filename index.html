@@ -372,10 +372,27 @@
 
   /* Mobile responsive */
   @media (max-width: 600px) {
-    #sidebar { width: 240px; min-width: 240px; position: absolute; z-index: 50; height: 100vh; }
-    #sidebar.collapsed { width: 0; min-width: 0; }
+    #sidebar {
+      position: fixed; inset: 0; z-index: 50;
+      width: 100vw !important; min-width: 100vw !important;
+      transform: translateX(0);
+      transition: transform 0.3s ease;
+    }
+    #sidebar.collapsed {
+      transform: translateX(-100%);
+      width: 100vw !important; min-width: 100vw !important;
+    }
+    .sidebar-close-btn { display: flex !important; }
     .msg-bubble { max-width: 85%; }
   }
+  .sidebar-close-btn {
+    display: none;
+    position: absolute; top: 20px; right: 18px;
+    background: none; border: none; color: var(--muted);
+    font-size: 22px; cursor: pointer; line-height: 1;
+    transition: color 0.2s; padding: 0;
+  }
+  .sidebar-close-btn:hover { color: var(--text); }
 </style>
 </head>
 <body>
@@ -400,9 +417,10 @@
 
   <!-- SIDEBAR -->
   <div id="sidebar">
-    <div class="sidebar-header">
+    <div class="sidebar-header" style="position:relative">
       <div class="sidebar-title">Finance Companion</div>
       <div class="sidebar-month" id="sidebar-month">April 2026</div>
+      <button class="sidebar-close-btn" onclick="toggleSidebar()" title="Close">✕</button>
     </div>
     <div class="sidebar-body">
       <div class="section-label">Balances</div>
@@ -438,7 +456,7 @@
       <button class="toggle-btn" onclick="toggleSidebar()" title="Toggle sidebar">☰</button>
       <div class="chat-title">Chat</div>
       <div class="chat-date" id="chat-date"></div>
-      <button class="reset-btn" onclick="openResetModal()">Reset Month</button>
+      <button class="reset-btn" onclick="openResetModal()">New Month →</button>
     </div>
     <div id="messages"></div>
     <div id="input-area">
@@ -469,11 +487,11 @@
 <!-- RESET MODAL -->
 <div id="reset-modal">
   <div class="modal-card">
-    <div class="modal-title">Reset Month?</div>
-    <div class="modal-sub">This will clear all spending data and chat history for the current month. Your financial profile and API key are kept. This cannot be undone.</div>
+    <div class="modal-title">Roll Over to Next Month?</div>
+    <div class="modal-sub">This will start a new month: spending resets, food card reloads (adjusted if you went over), and CC installments carry forward automatically. Your balances, savings, and profile are preserved. Chat history clears.</div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeResetModal()">Cancel</button>
-      <button class="modal-save" style="background:var(--red)" onclick="resetMonth()">Reset</button>
+      <button class="modal-save" style="background:var(--red)" onclick="rolloverMonth()">Roll Over</button>
     </div>
   </div>
 </div>
@@ -485,10 +503,11 @@ const MODEL = 'claude-haiku-4-5-20251001'; // Cheapest model — perfect for cha
 
 const DEFAULT_STATE = {
   month: 'April 2026',
-  checkingBalance: 42.77,
+  checkingBalance: 0,
   savingsBalance: null,
   foodCardBalance: 800.00,
   foodCardBudget: 800.00,
+  ccInstallments: [], // persistent across months: [{ name, amount, remainingMonths }]
   categories: {
     Food:          { spent: 0, budget: 800 },
     Transport:     { spent: 0, budget: 0 },
@@ -500,7 +519,7 @@ const DEFAULT_STATE = {
   },
   upcomingBills: [
     { name: 'Apartment Financing', amount: 2000, dueDate: 'Apr 15' },
-    { name: 'CC Payment',          amount: 1368.49, dueDate: 'May 6' }
+    { name: 'CC Payment',          amount: 0, dueDate: 'May 6' }
   ],
   monthlyExpenses: [],
   notes: ''
@@ -510,18 +529,19 @@ const SYSTEM_PROMPT = `You are a personal Finance Companion — a financially-sa
 
 ## USER FINANCIAL PROFILE
 - Monthly salary: $4,000 (paid $2,000 on the 1st and $2,000 on the 15th)
-- Food card: $800/month (loaded on last day of each month — separate from salary)
-  - If food card goes negative, reduce next month's food budget to compensate
-- Fixed bills on 1st paycheck: Flooring ($600) + Condo taxes ($500) + Credit card debt (due 6th each month)
+- Food card: $800/month base budget (loaded on last day of each month — separate from salary)
+  - foodCardBudget may be reduced from $800 if previous month went over; always use the value in state
+  - If food card goes negative, reduce next month's foodCardBudget to compensate the difference
+- Fixed bills on 1st paycheck: Flooring ($600) + Condo taxes ($500) + CC payment (due 6th each month)
 - Fixed bills on 15th paycheck: Apartment financing ($2,000 — fully consumes that paycheck)
-- Next CC payment: $1,368.49 due May 6th
-- Current checking account: $42.77 (as of April 6, 2026, after CC payment)
-- Savings: amount TBD
+- Checking balance and CC payment start at 0 until user provides real values
+- Savings: user will provide when ready
+- ccInstallments: array of installment plans that persist month to month
 
 ## HOW YOU RESPOND TO EXPENSES
 When the user mentions spending money:
 1. Acknowledge the expense clearly
-2. Assign it to the correct budget category
+2. Assign it to the correct budget category (Food expenses come from food card; others from checking)
 3. Tell them exactly how much is left in that category
 4. Flag if getting close to or over budget
 5. Add a brief friendly one-liner — warm, real, not robotic
@@ -530,9 +550,11 @@ Keep expense replies SHORT (2–4 sentences). No bullet points. Be like a financ
 
 ## OTHER BEHAVIORS
 - Never invent numbers. Ask if unsure.
+- When user provides checking balance or CC payment amount, update state immediately.
 - When asked "how am I doing" or for a summary, give a clean friendly overview.
 - Warn user if a month will go negative — they need to transfer from savings to avoid fees.
 - Track calendar month. The 15th paycheck is fully committed to apartment financing.
+- When user provides CC installment details, add them to ccInstallments and sum them for the CC bill amount.
 
 ## STATE UPDATES
 After EVERY response where finances changed, end your message with a state block:
@@ -544,10 +566,11 @@ After EVERY response where finances changed, end your message with a state block
 State schema (always return complete object):
 {
   "month": "April 2026",
-  "checkingBalance": 42.77,
+  "checkingBalance": 0,
   "savingsBalance": null,
   "foodCardBalance": 800.00,
   "foodCardBudget": 800.00,
+  "ccInstallments": [],
   "categories": {
     "Food":          { "spent": 0, "budget": 800 },
     "Transport":     { "spent": 0, "budget": 0 },
@@ -557,7 +580,10 @@ State schema (always return complete object):
     "Shopping":      { "spent": 0, "budget": 0 },
     "Other":         { "spent": 0, "budget": 0 }
   },
-  "upcomingBills": [],
+  "upcomingBills": [
+    { "name": "Apartment Financing", "amount": 2000, "dueDate": "Apr 15" },
+    { "name": "CC Payment", "amount": 0, "dueDate": "May 6" }
+  ],
   "monthlyExpenses": [],
   "notes": ""
 }`;
@@ -594,7 +620,7 @@ function launchApp() {
   renderSidebar();
   renderMessages();
   if (messages.length === 0) {
-    addMessage('assistant', "Hey! Finance Companion is live 💸 I've got your April profile loaded — $42.77 in checking, $800 on the food card, and your CC payment of $1,368.49 coming May 6th.\n\nJust talk to me like you normally would. What's up?");
+    addMessage('assistant', "Hey! Finance Companion is live 💸 Your profile is loaded and ready. Checking and CC payment are at $0 until you update me — just tell me the real values whenever you're ready.\n\nJust talk to me like you normally would. What's up?");
   }
 }
 
@@ -624,20 +650,78 @@ function updateApiKey() {
 
 function openResetModal() { document.getElementById('reset-modal').classList.add('open'); }
 function closeResetModal() { document.getElementById('reset-modal').classList.remove('open'); }
-function resetMonth() {
-  finState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+
+function rolloverMonth() {
+  const now = new Date();
+  const newMonthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  // Calculate food card adjustment: if last month went over, reduce new budget
+  const foodOverage = finState.foodCardBudget - finState.foodCardBalance;
+  const newFoodBudget = foodOverage > 0
+    ? Math.max(0, 800 - foodOverage)   // penalize next month
+    : 800;                              // full reset if not over
+  const newFoodBalance = newFoodBudget; // food card reloads fresh
+
+  // Carry forward CC installments (decrement remaining months)
+  const carriedInstallments = (finState.ccInstallments || [])
+    .map(inst => ({ ...inst, remainingMonths: inst.remainingMonths - 1 }))
+    .filter(inst => inst.remainingMonths > 0);
+
+  // Recalculate CC bill from remaining installments
+  const newCCTotal = carriedInstallments.reduce((sum, i) => sum + i.amount, 0);
+
+  // Build new month label for CC due date
+  const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 6);
+  const ccDueLabel = nextMonthDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const aptDueLabel = now.toLocaleDateString('en-US', { month: 'short' }) + ' 15';
+
+  // Preserve savings and profile, reset spending
+  const newState = {
+    month: newMonthLabel,
+    checkingBalance: 0,           // user will update after payday
+    savingsBalance: finState.savingsBalance,
+    foodCardBalance: newFoodBalance,
+    foodCardBudget: newFoodBudget,
+    ccInstallments: carriedInstallments,
+    categories: {
+      Food:          { spent: 0, budget: newFoodBudget },
+      Transport:     { spent: 0, budget: finState.categories.Transport?.budget || 0 },
+      Entertainment: { spent: 0, budget: finState.categories.Entertainment?.budget || 0 },
+      Personal:      { spent: 0, budget: finState.categories.Personal?.budget || 0 },
+      Health:        { spent: 0, budget: finState.categories.Health?.budget || 0 },
+      Shopping:      { spent: 0, budget: finState.categories.Shopping?.budget || 0 },
+      Other:         { spent: 0, budget: finState.categories.Other?.budget || 0 }
+    },
+    upcomingBills: [
+      { name: 'Apartment Financing', amount: 2000, dueDate: aptDueLabel },
+      { name: 'CC Payment', amount: newCCTotal, dueDate: ccDueLabel }
+    ],
+    monthlyExpenses: [],
+    notes: ''
+  };
+
+  finState = newState;
   messages = [];
   saveData();
   closeResetModal();
   renderSidebar();
   document.getElementById('messages').innerHTML = '';
-  addMessage('assistant', "Month reset! Fresh slate. I still have your profile — just start logging expenses whenever you're ready.");
+
+  const foodNote = newFoodBudget < 800
+    ? `Your food card reloaded at $${newFoodBudget.toFixed(2)} this month (reduced by $${foodOverage.toFixed(2)} to cover last month's overage).`
+    : 'Food card is back to the full $800.';
+  const ccNote = newCCTotal > 0
+    ? `CC payment for this month: $${newCCTotal.toFixed(2)} from ${carriedInstallments.length} active installment(s).`
+    : 'No CC installments active — update me if that changes.';
+
+  addMessage('assistant', `New month, fresh slate! ${foodNote} ${ccNote}\n\nChecking is at $0 — update me once your paycheck lands and we're good to go.`);
 }
 
 // ── SIDEBAR ──
 function toggleSidebar() {
   sidebarOpen = !sidebarOpen;
-  document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
+  const sidebar = document.getElementById('sidebar');
+  sidebar.classList.toggle('collapsed', !sidebarOpen);
 }
 
 function renderSidebar() {
