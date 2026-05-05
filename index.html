@@ -557,36 +557,18 @@ Keep expense replies SHORT (2–4 sentences). No bullet points. Be like a financ
 - When user provides CC installment details, add them to ccInstallments and sum them for the CC bill amount.
 
 ## STATE UPDATES
-After EVERY response where finances changed, end your message with a state block:
+After EVERY response where finances changed, you MUST end your message with a state update using EXACTLY this format — no exceptions, no skipping, even for simple acknowledgements:
 
-<STATE_UPDATE>
-{valid JSON here}
-</STATE_UPDATE>
+@@STATE_START
+{"month":"...","checkingBalance":0,"savingsBalance":null,"foodCardBalance":800,"foodCardBudget":800,"ccInstallments":[],"categories":{"Food":{"spent":0,"budget":800},"Transport":{"spent":0,"budget":0},"Entertainment":{"spent":0,"budget":0},"Personal":{"spent":0,"budget":0},"Health":{"spent":0,"budget":0},"Shopping":{"spent":0,"budget":0},"Other":{"spent":0,"budget":0}},"upcomingBills":[{"name":"Apartment Financing","amount":2000,"dueDate":"Apr 15"},{"name":"CC Payment","amount":0,"dueDate":"May 6"}],"monthlyExpenses":[],"notes":""}
+@@STATE_END
 
-State schema (always return complete object):
-{
-  "month": "April 2026",
-  "checkingBalance": 0,
-  "savingsBalance": null,
-  "foodCardBalance": 800.00,
-  "foodCardBudget": 800.00,
-  "ccInstallments": [],
-  "categories": {
-    "Food":          { "spent": 0, "budget": 800 },
-    "Transport":     { "spent": 0, "budget": 0 },
-    "Entertainment": { "spent": 0, "budget": 0 },
-    "Personal":      { "spent": 0, "budget": 0 },
-    "Health":        { "spent": 0, "budget": 0 },
-    "Shopping":      { "spent": 0, "budget": 0 },
-    "Other":         { "spent": 0, "budget": 0 }
-  },
-  "upcomingBills": [
-    { "name": "Apartment Financing", "amount": 2000, "dueDate": "Apr 15" },
-    { "name": "CC Payment", "amount": 0, "dueDate": "May 6" }
-  ],
-  "monthlyExpenses": [],
-  "notes": ""
-}`;
+Rules:
+- Use @@STATE_START and @@STATE_END as delimiters, always on their own lines
+- Always output the FULL state object, not a partial update
+- Never skip this block, even if the user just asked a question — update with current values
+- The state block must be at the very END of your response, after all conversational text
+- Do not wrap the JSON in markdown code fences`;
 
 let apiKey = '';
 let finState = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -873,9 +855,22 @@ async function sendMessage() {
       addMessage('assistant', `⚠️ API error: ${data.error.message}`);
     } else {
       const raw = data.content?.map(b => b.text || '').join('') || 'Something went wrong.';
-      const newState = parseState(raw);
+
+      // Strip state block FIRST so clean text is stored, never raw JSON
       const clean = cleanState(raw);
-      if (newState) { finState = newState; renderSidebar(); }
+
+      // Try tagged parse, then loose JSON fallback
+      let newState = parseState(raw);
+      if (!newState) newState = parseStateLoose(raw);
+      if (newState) {
+        finState = Object.assign({}, finState, newState);
+        if (newState.categories) finState.categories = newState.categories;
+        if (newState.upcomingBills) finState.upcomingBills = newState.upcomingBills;
+        if (newState.ccInstallments) finState.ccInstallments = newState.ccInstallments;
+      }
+
+      // Always re-render sidebar after every AI response
+      renderSidebar();
       hideTyping();
       addMessage('assistant', clean);
     }
@@ -899,13 +894,26 @@ function autoResize(el) {
 
 // ── HELPERS ──
 function parseState(text) {
-  const m = text.match(/<STATE_UPDATE>([\s\S]*?)<\/STATE_UPDATE>/);
+  // Match tagged block: @@STATE_START ... @@STATE_END  OR  <STATE_UPDATE> ... </STATE_UPDATE>
+  const m = text.match(/@@STATE_START([\s\S]*?)@@STATE_END/) ||
+            text.match(/<STATE_UPDATE>([\s\S]*?)<\/STATE_UPDATE>/);
   if (!m) return null;
   try { return JSON.parse(m[1].trim()); } catch { return null; }
 }
 
+// Fallback: grab the last top-level JSON object from the response
+function parseStateLoose(text) {
+  const matches = [...text.matchAll(/\{[\s\S]*?"month"[\s\S]*?\}/g)];
+  if (!matches.length) return null;
+  const last = matches[matches.length - 1][0];
+  try { return JSON.parse(last); } catch { return null; }
+}
+
 function cleanState(text) {
-  return text.replace(/<STATE_UPDATE>[\s\S]*?<\/STATE_UPDATE>/g, '').trim();
+  return text
+    .replace(/@@STATE_START[\s\S]*?@@STATE_END/g, '')
+    .replace(/<STATE_UPDATE>[\s\S]*?<\/STATE_UPDATE>/g, '')
+    .trim();
 }
 
 function fmt(val) {
