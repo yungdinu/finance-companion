@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2.0">
+<meta name="app-version" content="2.1">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Finance Companion</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Epilogue:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -226,7 +226,7 @@
     </div>
     <div class="sidebar-footer">
       <button class="settings-btn" onclick="openModal('key-modal')">⚙ Change API Key</button>
-      <div style="margin-top:10px;font-size:9px;color:#2a2a3e;letter-spacing:0.06em;">v2.0</div>
+      <div style="margin-top:10px;font-size:9px;color:#2a2a3e;letter-spacing:0.06em;">v2.1</div>
     </div>
   </div>
 
@@ -278,7 +278,7 @@
 // CONSTANTS
 // ─────────────────────────────────────────────
 const STORAGE_KEY = 'fc_data_v2';
-const MODEL = 'claude-haiku-4-5-20251001';
+const MODEL = 'claude-sonnet-4-6';
 
 // ─────────────────────────────────────────────
 // DEFAULT STATE
@@ -829,17 +829,32 @@ async function callAPI(apiMessages, retryCount = 0) {
     try {
       parsed = JSON.parse(cleaned);
     } catch(e) {
-      // Retry once with a stricter nudge
       if (retryCount === 0) {
-        const retryMessages = [
-          ...apiMessages,
-          { role: 'assistant', content: raw },
-          { role: 'user', content: 'Your response was not valid JSON. Reply with ONLY a JSON object with "reply" and "state" fields. No other text.' }
-        ];
-        return await callAPI(retryMessages, 1);
+        // Silent retry: strip everything down, just ask for the JSON object repair
+        // Don't tell the model it failed — just re-request with minimal prompt
+        const repairSystem = `You are a JSON repair assistant. The user will give you a malformed response. Return ONLY a valid JSON object with exactly two fields: "reply" (string) and "state" (object). No markdown, no explanation, no extra text.`;
+        const repairMessages = [{ role: 'user', content: `Repair this into valid JSON with "reply" and "state" fields:\n\n${raw}` }];
+        try {
+          const repairRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({ model: MODEL, max_tokens: 1024, system: repairSystem, messages: repairMessages })
+          });
+          const repairData = await repairRes.json();
+          const repairRaw = (repairData.content || []).map(b => b.text || '').join('').trim()
+            .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+          parsed = JSON.parse(repairRaw);
+        } catch(e2) {
+          return '⚠️ Something went wrong. Try again in a moment.';
+        }
+      } else {
+        return '⚠️ Something went wrong. Try again in a moment.';
       }
-      // If retry also fails, return a safe fallback — don't update state
-      return '⚠️ I had trouble formatting my response. Try rephrasing your message.';
     }
 
     // Successfully parsed — update state
