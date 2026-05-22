@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2.1">
+<meta name="app-version" content="2.4">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Finance Companion</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Epilogue:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -226,7 +226,11 @@
     </div>
     <div class="sidebar-footer">
       <button class="settings-btn" onclick="openModal('key-modal')">⚙ Change API Key</button>
-      <div style="margin-top:10px;font-size:9px;color:#2a2a3e;letter-spacing:0.06em;">v2.1</div>
+      <div style="margin-top:12px;display:flex;gap:6px;">
+        <button class="settings-btn" onclick="exportState()" style="flex:1;justify-content:center;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 4px;font-size:10px;letter-spacing:0.04em;">↑ Export</button>
+        <button class="settings-btn" onclick="openModal('import-modal')" style="flex:1;justify-content:center;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 4px;font-size:10px;letter-spacing:0.04em;">↓ Import</button>
+      </div>
+      <div style="margin-top:8px;font-size:9px;color:#2a2a3e;letter-spacing:0.06em;">v2.4</div>
     </div>
   </div>
 
@@ -273,16 +277,39 @@
   </div>
 </div>
 
+<div id="import-modal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-title">Import Backup</div>
+    <div class="modal-sub">Paste your exported JSON below. This will fully replace current state. Chat history will be cleared.</div>
+    <textarea id="import-input" class="setup-input" rows="6"
+      style="resize:vertical;min-height:100px;font-size:11px;font-family:monospace;letter-spacing:0;"
+      placeholder='{"month":"...","checkingBalance":...}'></textarea>
+    <div id="import-error" style="font-size:11px;color:var(--red);margin-top:8px;display:none;"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('import-modal')">Cancel</button>
+      <button class="modal-save" onclick="importState()">Restore</button>
+    </div>
+  </div>
+</div>
+
+<div id="export-toast" style="
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--green);color:#0a0a0f;padding:10px 20px;border-radius:10px;
+  font-size:12px;font-weight:600;opacity:0;transition:all 0.3s ease;z-index:300;
+  pointer-events:none;white-space:nowrap;">
+  ✓ Copied to clipboard
+</div>
+
 <script>
-// ─────────────────────────────────────────────
+// ---
 // CONSTANTS
-// ─────────────────────────────────────────────
+// ---
 const STORAGE_KEY = 'fc_data_v2';
 const MODEL = 'claude-sonnet-4-6';
 
-// ─────────────────────────────────────────────
+// ---
 // DEFAULT STATE
-// ─────────────────────────────────────────────
+// ---
 function freshState() {
   const now = new Date();
   const month = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -313,78 +340,84 @@ function freshState() {
   };
 }
 
-// ─────────────────────────────────────────────
-// SYSTEM PROMPT — two-field JSON contract
-// ─────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are a personal Finance Companion — a financially-savvy, warm, direct friend.
+// ---
+// SYSTEM PROMPT - action-based contract
+// AI classifies intent, app does all math
+// ---
+const SYSTEM_PROMPT = `You are a personal Finance Companion - a financially-savvy, warm, direct friend.
 
 ## PROFILE
 - Salary: $4,000/month ($2,000 on 1st, $2,000 on 15th)
 - Food card: loads $800 on the 1st (separate from salary). Budget may be reduced if previous month went over.
-- Fixed bills: Flooring ~13th ($600 default, variable), Condo ~10th ($600 default, variable), CC due 5th, Apartment financing ~19th ($2,000)
-- CC billing cycle: opens 29th of month before last, closes 28th of last month, due 5th current month
-- checkingBalance and savingsBalance start null until user provides them
+- Fixed bills: Flooring ~13th, Condo ~10th, CC due 5th, Apartment financing ~19th ($2,000)
+- CC billing cycle: opens 29th two months ago, closes 28th of last month, due 5th current month
 - ccInstallments persist across months; ccAccrued tracks CC-tagged spending in current billing window
 
-## EXPENSE HANDLING
-When user mentions spending:
-1. Identify amount, what it is, whether it's food-card or CC/checking
-2. Assign a category (use existing ones or create a sensible new one)
-3. Update the relevant balance and category spent amount
-4. Reply warmly in 2-4 sentences — friendly, direct, no bullet points
-5. Flag if close to or over budget
+## HOW TO REPLY
+- Keep replies to 2-4 sentences. Warm, direct, no bullet points.
+- For expenses: acknowledge what it was, mention the category, note remaining budget in that category if relevant.
+- Never invent numbers. If unsure what account or category something belongs to, make your best call and mention it.
+- For questions or summaries: give a clear, friendly overview based on the current state provided.
 
-## OTHER
-- Never invent numbers. If unsure, ask.
-- When user gives a balance or installment detail, update state immediately.
-- When user asks for summary or projection context, give a clear friendly overview.
-- Warn if month looks like it will go negative.
-
-## RESPONSE FORMAT — CRITICAL
+## RESPONSE FORMAT - CRITICAL
 You MUST respond with ONLY a valid JSON object. No text before or after. No markdown fences.
-The object has exactly two fields:
-  "reply": string — your friendly conversational response shown in chat
-  "state": object — the complete updated financial state
+The object has exactly two fields: "reply" and "action".
 
-State schema:
-{
-  "month": "string",
-  "checkingBalance": number or null,
-  "savingsBalance": number or null,
-  "foodCardBalance": number,
-  "foodCardBudget": number,
-  "ccInstallments": [{ "name": "string", "amount": number, "remainingMonths": number }],
-  "ccAccrued": number,
-  "categories": {
-    "Food": { "spent": number, "budget": number },
-    "Transport": { "spent": number, "budget": number },
-    "Entertainment": { "spent": number, "budget": number },
-    "Personal": { "spent": number, "budget": number },
-    "Health": { "spent": number, "budget": number },
-    "Shopping": { "spent": number, "budget": number },
-    "Other": { "spent": number, "budget": number }
-  },
-  "fixedBills": { "flooring": number, "condo": number, "apartmentFinancing": number },
-  "monthlyExpenses": [{ "name": "string", "amount": number, "category": "string", "account": "string", "date": "string" }],
-  "notes": "string"
-}
+"reply": string - your friendly conversational response shown in chat.
 
-You may add new keys to categories if the user's expense warrants a new category.
+"actions": array of action objects to apply in order. Use multiple actions for bulk updates. Empty array [] if no state change needed.
+
+Action types:
+
+EXPENSE - user spent money:
+{ "type": "expense", "amount": number, "category": "string", "account": "foodCard"|"checking"|"cc", "name": "string" }
+- account "foodCard": deducted from food card balance
+- account "checking": deducted from checking balance
+- account "cc": deducted from checking AND adds to ccAccrued (CC purchase)
+- category: use existing ones or create a new sensible one
+
+INCOME - user received money:
+{ "type": "income", "amount": number, "account": "checking"|"savings" }
+
+SET_BALANCE - user reports an actual balance:
+{ "type": "set_balance", "account": "checking"|"savings"|"foodCard", "value": number }
+
+ADD_INSTALLMENT - user adds or updates a CC installment:
+{ "type": "add_installment", "name": "string", "amount": number, "remainingMonths": number }
+
+REMOVE_INSTALLMENT - user paid off or removes an installment:
+{ "type": "remove_installment", "name": "string" }
+
+UPDATE_BILL - user updates a fixed bill amount:
+{ "type": "update_bill", "bill": "flooring"|"condo"|"apartmentFinancing", "amount": number }
+
+SET_FOOD_BUDGET - manually correct food card budget ceiling:
+{ "type": "set_food_budget", "amount": number }
+
+SET_CATEGORY - set a category's spent and/or budget directly (use for bulk restores):
+{ "type": "set_category", "category": "string", "spent": number, "budget": number }
+
+Example single expense:
+{"reply": "Got it - $38 on lunch from the food card.", "actions": [{"type": "expense", "amount": 38, "category": "Food", "account": "foodCard", "name": "Lunch"}]}
+
+Example bulk profile restore (paste your full profile and AI returns all at once):
+{"reply": "All synced! Here's where you stand...", "actions": [{"type": "set_balance", "account": "checking", "value": 636}, {"type": "set_balance", "account": "savings", "value": 1290}, {"type": "add_installment", "name": "iPhone", "amount": 219, "remainingMonths": 999}, {"type": "set_category", "category": "Food", "spent": 455.57, "budget": 743}]}
+
 NEVER include any text outside the JSON object. NEVER use markdown. Your entire response must be parseable by JSON.parse().`;
 
-// ─────────────────────────────────────────────
+// ---
 // APP STATE
-// ─────────────────────────────────────────────
+// ---
 let apiKey = '';
 let finState = freshState();
-let messages = [];  // stored as { role, content } — content is always clean reply text
+let messages = [];  // stored as { role, content } - content is always clean reply text
 let sidebarOpen = true;
 
-// ─────────────────────────────────────────────
+// ---
 // PROJECTION ENGINE (pure JS, no AI)
 // Runs month by month until balance goes negative
 // or 18 months, whichever comes first.
-// ─────────────────────────────────────────────
+// ---
 function computeProjection() {
   if (finState.checkingBalance === null) return null;
 
@@ -415,14 +448,14 @@ function computeProjection() {
   const curYear  = today.getFullYear();
   const curMonth = today.getMonth();
 
-  // ── CURRENT MONTH: only events still in the future ──
+  // --- CURRENT MONTH: only events still in the future --
   addEvent(curYear, curMonth,  5, 'CC Payment',         -(firstCCDue));
   addEvent(curYear, curMonth, 10, 'Condo',              -condo);
   addEvent(curYear, curMonth, 13, 'Flooring',           -flooring);
   addEvent(curYear, curMonth, 15, '2nd Paycheck',       +2000);
   addEvent(curYear, curMonth, 19, 'Apt Financing',      -aptFin);
 
-  // ── FUTURE MONTHS: up to 18, stop building after first negative ──
+  // --- FUTURE MONTHS: up to 18, stop building after first negative --
   // We pre-build all events then walk; easier than interleaving tick logic.
   // Track installment state per month offset.
   let monthInsts = insts;
@@ -464,7 +497,7 @@ function computeProjection() {
     if (running < 0 && !goesNegativeOn) {
       goesNegativeOn    = ev.date;
       goesNegativeAfter = ev.label;
-      break; // stop — we found the answer
+      break; // stop - we found the answer
     }
   }
 
@@ -478,9 +511,9 @@ function computeProjection() {
   };
 }
 
-// ─────────────────────────────────────────────
+// ---
 // INIT & STORAGE
-// ─────────────────────────────────────────────
+// ---
 function init() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
@@ -511,13 +544,13 @@ function launchApp() {
   renderSidebar();
   renderMessages();
   if (messages.length === 0) {
-    addMessage('assistant', "Hey! Finance Companion is live 💸 Your profile is ready — checking and savings are at zero until you tell me the real values. Food card is at $800.\n\nJust talk to me naturally. What's up?");
+    addMessage('assistant', "Hey! Finance Companion is live 💸 Your profile is ready - checking and savings are at zero until you tell me the real values. Food card is at $800.\n\nJust talk to me naturally. What's up?");
   }
 }
 
-// ─────────────────────────────────────────────
+// ---
 // SETUP / API KEY
-// ─────────────────────────────────────────────
+// ---
 function saveApiKey() {
   const key = document.getElementById('setup-key-input').value.trim();
   if (!key.startsWith('sk-ant-')) { document.getElementById('setup-error').style.display = 'block'; return; }
@@ -535,27 +568,27 @@ document.getElementById('setup-key-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') saveApiKey();
 });
 
-// ─────────────────────────────────────────────
+// ---
 // MODALS
-// ─────────────────────────────────────────────
+// ---
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-// ─────────────────────────────────────────────
+// ---
 // SIDEBAR
-// ─────────────────────────────────────────────
+// ---
 function toggleSidebar() {
   sidebarOpen = !sidebarOpen;
   document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
 }
 
 function renderSidebar() {
-  document.getElementById('sidebar-month').textContent = finState.month || '—';
+  document.getElementById('sidebar-month').textContent = finState.month || '-';
 
   // Checking
   const checkEl = document.getElementById('bal-checking');
   const chk = finState.checkingBalance;
-  checkEl.textContent = chk !== null ? fmt(chk) : '—';
+  checkEl.textContent = chk !== null ? fmt(chk) : '-';
   checkEl.className = 'balance-amount ' +
     (chk === null ? 'bal-neutral' : chk < 0 ? 'bal-danger' : chk < 200 ? 'bal-warn' : 'bal-green');
 
@@ -567,7 +600,7 @@ function renderSidebar() {
 
   // Savings
   const sav = finState.savingsBalance;
-  document.getElementById('bal-savings').textContent = sav !== null ? fmt(sav) : '—';
+  document.getElementById('bal-savings').textContent = sav !== null ? fmt(sav) : '-';
 
   // Projection
   const proj = computeProjection();
@@ -576,7 +609,7 @@ function renderSidebar() {
   const projAlertEl = document.getElementById('proj-alert');
 
   if (!proj) {
-    projAmtEl.textContent = '—';
+    projAmtEl.textContent = '-';
     projAmtEl.className = 'projection-amount bal-neutral';
     projNoteEl.textContent = 'Set checking balance to activate';
     projAlertEl.style.display = 'none';
@@ -592,7 +625,7 @@ function renderSidebar() {
       projAlertEl.style.color = 'var(--red)';
       projAlertEl.style.display = 'block';
     } else {
-      // Never goes negative — show lowest point as a warning if it's tight
+      // Never goes negative - show lowest point as a warning if it's tight
       const lowDate = proj.lowestDate
         ? proj.lowestDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
         : null;
@@ -602,7 +635,7 @@ function renderSidebar() {
         ? `Lowest point after ${proj.lowestLabel} on ${lowDate}`
         : 'Projection looks healthy';
       if (proj.lowestBalance < 400) {
-        projAlertEl.innerHTML = `Getting tight — consider keeping savings ready`;
+        projAlertEl.innerHTML = `Getting tight - consider keeping savings ready`;
         projAlertEl.style.color = 'var(--yellow)';
         projAlertEl.style.display = 'block';
       } else {
@@ -622,9 +655,9 @@ function renderSidebar() {
   document.getElementById('cc-next-due').textContent =
     dueMonth.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   document.getElementById('cc-installments-total').textContent =
-    finState.ccInstallments.length > 0 ? fmt(installTotal) : '—';
+    finState.ccInstallments.length > 0 ? fmt(installTotal) : '-';
   document.getElementById('cc-accrued').textContent = fmt(finState.ccAccrued || 0);
-  document.getElementById('cc-total-due').textContent = ccTotal > 0 ? fmt(ccTotal) : '—';
+  document.getElementById('cc-total-due').textContent = ccTotal > 0 ? fmt(ccTotal) : '-';
 
   // Budget bars
   const barsEl = document.getElementById('budget-bars');
@@ -671,9 +704,9 @@ function renderSidebar() {
   });
 }
 
-// ─────────────────────────────────────────────
+// ---
 // MONTH ROLLOVER
-// ─────────────────────────────────────────────
+// ---
 function rolloverMonth() {
   const now = new Date();
   const newMonth = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -719,9 +752,9 @@ function rolloverMonth() {
   addMessage('assistant', `New month, fresh slate! ${foodNote} ${instNote}\n\nTell me your checking balance when you're ready and I'll get the projection running.`);
 }
 
-// ─────────────────────────────────────────────
+// ---
 // MESSAGES
-// ─────────────────────────────────────────────
+// ---
 function addMessage(role, content) {
   messages.push({ role, content });
   renderMessage(role, content);
@@ -732,8 +765,9 @@ function addMessage(role, content) {
 function renderMessage(role, content) {
   const el = document.createElement('div');
   el.className = `msg ${role}`;
+  // Assistant messages get markdown rendering; user messages get plain escaping
   if (role === 'assistant') {
-    el.innerHTML = `<div class="msg-avatar">✦</div><div class="msg-bubble">${escHtml(content)}</div>`;
+    el.innerHTML = `<div class="msg-avatar">✦</div><div class="msg-bubble" style="white-space:normal">${renderMarkdown(content)}</div>`;
   } else {
     el.innerHTML = `<div class="msg-bubble">${escHtml(content)}</div>`;
   }
@@ -764,9 +798,9 @@ function scrollBottom() {
   el.scrollTop = el.scrollHeight;
 }
 
-// ─────────────────────────────────────────────
+// ---
 // SEND MESSAGE
-// ─────────────────────────────────────────────
+// ---
 async function sendMessage() {
   const input = document.getElementById('user-input');
   const text = input.value.trim();
@@ -779,12 +813,23 @@ async function sendMessage() {
   addMessage('user', text);
   showTyping();
 
-  // Build API history — inject state snapshot into the latest user turn only
-  const stateSnapshot = JSON.stringify(finState);
+  // Inject a compact state context into the latest user turn only
+  // Keep it minimal - AI only needs balances and installments, not full expense log
+  const ctx = {
+    month: finState.month,
+    checkingBalance: finState.checkingBalance,
+    savingsBalance: finState.savingsBalance,
+    foodCardBalance: finState.foodCardBalance,
+    foodCardBudget: finState.foodCardBudget,
+    ccInstallments: finState.ccInstallments,
+    ccAccrued: finState.ccAccrued,
+    categories: finState.categories,
+    fixedBills: finState.fixedBills
+  };
   const apiMessages = messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
   apiMessages.push({
     role: 'user',
-    content: `${text}\n\n[CURRENT STATE: ${stateSnapshot}]`
+    content: `${text}\n\n[CURRENT STATE: ${JSON.stringify(ctx)}]`
   });
 
   const reply = await callAPI(apiMessages);
@@ -796,84 +841,154 @@ async function sendMessage() {
   document.getElementById('user-input').focus();
 }
 
-// ─────────────────────────────────────────────
-// API CALL — with retry on parse failure
-// ─────────────────────────────────────────────
-async function callAPI(apiMessages, retryCount = 0) {
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        messages: apiMessages
-      })
-    });
+// ---
+// ACTION APPLIER - all math lives here, not in AI
+// ---
+// Apply a single action object to finState
+function applyAction(action) {
+  if (!action || action.type === 'none') return;
 
-    const data = await res.json();
-    if (data.error) return `⚠️ API error: ${data.error.message}`;
+  const r = (n) => Math.round(n * 100) / 100;
 
-    const raw = (data.content || []).map(b => b.text || '').join('').trim();
+  switch (action.type) {
 
-    // Strip markdown fences if model wrapped it anyway
-    const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+    case 'expense': {
+      const amt = Number(action.amount) || 0;
+      const cat = action.category || 'Other';
+      const acc = action.account || 'checking';
 
-    let parsed;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch(e) {
-      if (retryCount === 0) {
-        // Silent retry: strip everything down, just ask for the JSON object repair
-        // Don't tell the model it failed — just re-request with minimal prompt
-        const repairSystem = `You are a JSON repair assistant. The user will give you a malformed response. Return ONLY a valid JSON object with exactly two fields: "reply" (string) and "state" (object). No markdown, no explanation, no extra text.`;
-        const repairMessages = [{ role: 'user', content: `Repair this into valid JSON with "reply" and "state" fields:\n\n${raw}` }];
-        try {
-          const repairRes = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey,
-              'anthropic-version': '2023-06-01',
-              'anthropic-dangerous-direct-browser-access': 'true'
-            },
-            body: JSON.stringify({ model: MODEL, max_tokens: 1024, system: repairSystem, messages: repairMessages })
-          });
-          const repairData = await repairRes.json();
-          const repairRaw = (repairData.content || []).map(b => b.text || '').join('').trim()
-            .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-          parsed = JSON.parse(repairRaw);
-        } catch(e2) {
-          return '⚠️ Something went wrong. Try again in a moment.';
-        }
+      if (acc === 'foodCard') {
+        finState.foodCardBalance = r(finState.foodCardBalance - amt);
       } else {
+        if (finState.checkingBalance !== null)
+          finState.checkingBalance = r(finState.checkingBalance - amt);
+        if (acc === 'cc')
+          finState.ccAccrued = r((finState.ccAccrued || 0) + amt);
+      }
+
+      if (!finState.categories[cat])
+        finState.categories[cat] = { spent: 0, budget: 0 };
+      finState.categories[cat].spent = r(finState.categories[cat].spent + amt);
+
+      finState.monthlyExpenses.push({
+        name: action.name || cat,
+        amount: amt,
+        category: cat,
+        account: acc,
+        date: new Date().toISOString().slice(0, 10)
+      });
+      break;
+    }
+
+    case 'income': {
+      const amt = Number(action.amount) || 0;
+      if (action.account === 'savings') {
+        finState.savingsBalance = r((finState.savingsBalance || 0) + amt);
+      } else {
+        finState.checkingBalance = r((finState.checkingBalance || 0) + amt);
+      }
+      break;
+    }
+
+    case 'set_balance': {
+      const val = Number(action.value);
+      if (action.account === 'checking')  finState.checkingBalance = r(val);
+      if (action.account === 'savings')   finState.savingsBalance  = r(val);
+      if (action.account === 'foodCard')  finState.foodCardBalance = r(val);
+      break;
+    }
+
+    case 'add_installment': {
+      const idx = finState.ccInstallments.findIndex(i =>
+        i.name.toLowerCase() === (action.name || '').toLowerCase());
+      const entry = { name: action.name, amount: Number(action.amount), remainingMonths: Number(action.remainingMonths) };
+      if (idx >= 0) finState.ccInstallments[idx] = entry;
+      else finState.ccInstallments.push(entry);
+      break;
+    }
+
+    case 'remove_installment': {
+      finState.ccInstallments = finState.ccInstallments.filter(i =>
+        i.name.toLowerCase() !== (action.name || '').toLowerCase());
+      break;
+    }
+
+    case 'update_bill': {
+      if (!finState.fixedBills) finState.fixedBills = {};
+      finState.fixedBills[action.bill] = Number(action.amount);
+      break;
+    }
+
+    case 'set_food_budget': {
+      finState.foodCardBudget = Number(action.amount);
+      if (!finState.categories.Food) finState.categories.Food = { spent: 0, budget: 0 };
+      finState.categories.Food.budget = Number(action.amount);
+      break;
+    }
+
+    case 'set_category': {
+      const cat = action.category || 'Other';
+      if (!finState.categories[cat]) finState.categories[cat] = { spent: 0, budget: 0 };
+      if (action.spent  !== undefined) finState.categories[cat].spent  = r(Number(action.spent));
+      if (action.budget !== undefined) finState.categories[cat].budget = r(Number(action.budget));
+      break;
+    }
+  }
+}
+
+// Apply an array of actions, then save once
+function applyActions(actions) {
+  if (!Array.isArray(actions)) return;
+  actions.forEach(applyAction);
+  saveData();
+}
+
+// ---
+// API CALL - parse action, apply in JS, retry on bad JSON
+// ---
+async function fetchFromAPI(apiMessages, system) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({ model: MODEL, max_tokens: 1024, system, messages: apiMessages })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return (data.content || []).map(b => b.text || '').join('').trim();
+}
+
+function stripFences(raw) {
+  return raw.replace(/^\u0060\u0060\u0060json\s*/i, '').replace(/^\u0060\u0060\u0060\s*/i, '').replace(/\u0060\u0060\u0060\s*$/i, '').trim();
+}
+
+async function callAPI(apiMessages) {
+  try {
+    const raw = await fetchFromAPI(apiMessages, SYSTEM_PROMPT);
+    let parsed;
+
+    try {
+      parsed = JSON.parse(stripFences(raw));
+    } catch(e) {
+      // Silent repair pass - send broken output to a minimal repair prompt
+      const repairRaw = await fetchFromAPI(
+        [{ role: 'user', content: 'Fix this into valid JSON with "reply" (string) and "actions" (array of action objects, or []) fields. Return ONLY the JSON object, nothing else:\n\n' + raw }],
+        'You are a JSON repair assistant. Return ONLY a valid JSON object. No markdown, no explanation.'
+      );
+      try {
+        parsed = JSON.parse(stripFences(repairRaw));
+      } catch(e2) {
         return '⚠️ Something went wrong. Try again in a moment.';
       }
     }
 
-    // Successfully parsed — update state
-    if (parsed.state) {
-      // Merge carefully so no fields get accidentally wiped
-      const s = parsed.state;
-      if (s.checkingBalance  !== undefined) finState.checkingBalance  = s.checkingBalance;
-      if (s.savingsBalance   !== undefined) finState.savingsBalance   = s.savingsBalance;
-      if (s.foodCardBalance  !== undefined) finState.foodCardBalance  = s.foodCardBalance;
-      if (s.foodCardBudget   !== undefined) finState.foodCardBudget   = s.foodCardBudget;
-      if (s.ccInstallments   !== undefined) finState.ccInstallments   = s.ccInstallments;
-      if (s.ccAccrued        !== undefined) finState.ccAccrued        = s.ccAccrued;
-      if (s.categories       !== undefined) finState.categories       = s.categories;
-      if (s.fixedBills       !== undefined) finState.fixedBills       = s.fixedBills;
-      if (s.monthlyExpenses  !== undefined) finState.monthlyExpenses  = s.monthlyExpenses;
-      if (s.notes            !== undefined) finState.notes            = s.notes;
-      if (s.month            !== undefined) finState.month            = s.month;
-      saveData();
-    }
+    // Apply all actions - this is where state actually changes
+    if (Array.isArray(parsed.actions)) applyActions(parsed.actions);
+    else if (parsed.action) applyAction(parsed.action); // backwards compat
 
     return parsed.reply || '(no reply)';
 
@@ -882,9 +997,9 @@ async function callAPI(apiMessages, retryCount = 0) {
   }
 }
 
-// ─────────────────────────────────────────────
+// ---
 // HELPERS
-// ─────────────────────────────────────────────
+// ---
 function handleKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 }
@@ -895,7 +1010,7 @@ function autoResize(el) {
 }
 
 function fmt(val) {
-  if (val === null || val === undefined) return '—';
+  if (val === null || val === undefined) return '-';
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 }
 
@@ -905,9 +1020,109 @@ function escHtml(str) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
 
-// ─────────────────────────────────────────────
+// Lightweight markdown renderer - bold, italic, inline code only
+function renderMarkdown(str) {
+  // Escape HTML first, then convert markdown patterns
+  let s = escHtml(str);
+  // Bold: **text** or __text__
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  // Italic: *text* or _text_ (single, not double)
+  s = s.replace(/\*(?!\*)(.+?)(?<!\*)\*/g, '<em>$1</em>');
+  s = s.replace(/_(?!_)(.+?)(?<!_)_/g, '<em>$1</em>');
+  // Inline code: `code`
+  s = s.replace(/`([^`]+)`/g, '<code style="background:var(--surface);padding:1px 5px;border-radius:4px;font-size:12px;">$1</code>');
+  // Newlines - <br>
+  s = s.replace(/\n/g, '<br>');
+  return s;
+}
+
+// ---
+// EXPORT / IMPORT
+// ---
+function exportState() {
+  const snapshot = {
+    _version: '2.4',
+    _exported: new Date().toISOString(),
+    ...finState
+  };
+  const json = JSON.stringify(snapshot, null, 2);
+  navigator.clipboard.writeText(json).then(() => {
+    const toast = document.getElementById('export-toast');
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(-50%) translateY(0)';
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(20px)';
+    }, 2200);
+  }).catch(() => {
+    // Fallback: show in a prompt so user can copy manually
+    window.prompt('Copy your backup JSON:', json);
+  });
+}
+
+function importState() {
+  const raw = document.getElementById('import-input').value.trim();
+  const errEl = document.getElementById('import-error');
+  errEl.style.display = 'none';
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch(e) {
+    errEl.textContent = 'Invalid JSON - check your paste and try again.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Strip meta fields before applying
+  const { _version, _exported, ...restored } = parsed;
+
+  // Validate bare minimum fields exist
+  if (restored.month === undefined || restored.categories === undefined) {
+    errEl.textContent = "This doesn't look like a valid Finance Companion backup.";
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Apply - merge with freshState to fill any missing fields from older versions
+  finState = { ...freshState(), ...restored };
+  messages = [];
+  saveData();
+  closeModal('import-modal');
+  document.getElementById('import-input').value = '';
+  renderSidebar();
+  renderMessages();
+
+  // Build confirmation summary from the restored data
+  const instTotal = (finState.ccInstallments || []).reduce((s,i) => s + i.amount, 0);
+  const catSummary = Object.entries(finState.categories)
+    .filter(([,v]) => v.spent > 0)
+    .map(([k,v]) => `${k}: ${fmt(v.spent)}`)
+    .join(', ') || 'none';
+
+  addMessage('assistant',
+    `Backup restored for **${finState.month}**.
+
+` +
+    `**Checking:** ${finState.checkingBalance !== null ? fmt(finState.checkingBalance) : '-'}  | ` +
+    `**Savings:** ${finState.savingsBalance !== null ? fmt(finState.savingsBalance) : '-'}  | ` +
+    `**Food card:** ${fmt(finState.foodCardBalance)} / ${fmt(finState.foodCardBudget)}
+
+` +
+    `**CC installments:** ${finState.ccInstallments.length > 0 ? fmt(instTotal) + '/mo across ' + finState.ccInstallments.length + ' installment(s)' : 'none'}
+
+` +
+    `**Spending this month:** ${catSummary}
+
+` +
+    `Everything looks good - pick up right where you left off.`
+  );
+}
+
+// ---
 // GO
-// ─────────────────────────────────────────────
+// ---
 init();
 </script>
 </body>
