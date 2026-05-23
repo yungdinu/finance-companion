@@ -678,30 +678,79 @@ function renderSidebar() {
       </div>`;
   }
 
-  // Upcoming bills (computed, not AI-provided)
+  // Upcoming bills — derived from projection event schedule, future only
   const billsEl = document.getElementById('upcoming-bills');
   billsEl.innerHTML = '';
   const fb = finState.fixedBills || {};
-  const todayD = now.getDate();
-  const mo = now.toLocaleDateString('en-US', { month: 'short' });
-  const bills = [
-    { name: 'CC Payment',          amount: ccTotal,              day: 5  },
-    { name: 'Condo',               amount: fb.condo || 0,        day: 10 },
-    { name: 'Flooring',            amount: fb.flooring || 0,     day: 13 },
-    { name: 'Apartment Financing', amount: fb.apartmentFinancing || 0, day: 15 },
-  ].filter(b => b.amount > 0);
 
-  bills.forEach(b => {
-    const isPast = todayD > b.day;
-    billsEl.innerHTML += `
-      <div class="bill-item" style="${isPast ? 'opacity:0.4' : ''}">
-        <div>
-          <div class="bill-name">${b.name}${isPast ? ' ✓' : ''}</div>
-          <div class="bill-date">${mo} ${b.day}</div>
-        </div>
-        <div class="bill-amount">${fmt(b.amount)}</div>
-      </div>`;
-  });
+  // Build the same event list the projection uses, but just for display
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  function relativeLabel(evDate) {
+    const diffMs   = evDate - todayMidnight;
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    return `In ${diffDays} days`;
+  }
+
+  // Collect upcoming events (same logic as projection, but for display only)
+  const upcomingEvents = [];
+  function addUpcoming(y, m, d, label, amount, isIncome) {
+    const evDate = new Date(y, m, d);
+    if (evDate > todayMidnight) {
+      upcomingEvents.push({ date: evDate, label, amount, isIncome });
+    }
+  }
+
+  const curYear2  = todayMidnight.getFullYear();
+  const curMonth2 = todayMidnight.getMonth();
+
+  // This month remaining
+  addUpcoming(curYear2, curMonth2,  5,  'CC Payment',         ccTotal,                    false);
+  addUpcoming(curYear2, curMonth2, 10,  'Condo',              fb.condo || 0,              false);
+  addUpcoming(curYear2, curMonth2, 13,  'Flooring',           fb.flooring || 0,           false);
+  addUpcoming(curYear2, curMonth2, 15,  '2nd Paycheck',       2000,                       true);
+  addUpcoming(curYear2, curMonth2, 19,  'Apt Financing',      fb.apartmentFinancing || 0, false);
+
+  // Next two months
+  for (let offset = 1; offset <= 2; offset++) {
+    const absM = curMonth2 + offset;
+    const yr   = curYear2 + Math.floor(absM / 12);
+    const mo2  = absM % 12;
+    const nextInstallTotal = (finState.ccInstallments || [])
+      .filter(i => i.remainingMonths > offset)
+      .reduce((s, i) => s + i.amount, 0);
+    addUpcoming(yr, mo2,  1,  '1st Paycheck',    2000,                       true);
+    addUpcoming(yr, mo2,  5,  'CC Payment',       nextInstallTotal,           false);
+    addUpcoming(yr, mo2, 10,  'Condo',            fb.condo || 0,              false);
+    addUpcoming(yr, mo2, 13,  'Flooring',         fb.flooring || 0,           false);
+    addUpcoming(yr, mo2, 15,  '2nd Paycheck',     2000,                       true);
+    addUpcoming(yr, mo2, 19,  'Apt Financing',    fb.apartmentFinancing || 0, false);
+  }
+
+  // Sort and take next 5, filter zero-amount bills
+  upcomingEvents
+    .filter(e => e.amount > 0)
+    .sort((a, b) => a.date - b.date)
+    .slice(0, 5)
+    .forEach(e => {
+      const rel   = relativeLabel(e.date);
+      const color = e.isIncome ? 'var(--green)' : 'var(--red)';
+      const sign  = e.isIncome ? '+' : '';
+      billsEl.innerHTML += `
+        <div class="bill-item">
+          <div>
+            <div class="bill-name" style="color:${color}">${e.label}</div>
+            <div class="bill-date">${rel}</div>
+          </div>
+          <div class="bill-amount" style="color:${color}">${sign}${fmt(e.amount)}</div>
+        </div>`;
+    });
+
+  if (upcomingEvents.filter(e => e.amount > 0).length === 0) {
+    billsEl.innerHTML = '<div style="font-size:11px;color:var(--muted)">Nothing scheduled.</div>';
+  }
 }
 
 // ---
