@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2.4">
+<meta name="app-version" content="2.5">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Finance Companion</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Epilogue:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -159,6 +159,28 @@
     .msg-bubble { max-width: 85%; }
   }
 
+  /* REPOSITORIES */
+  .repo-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 13px; margin-bottom: 7px; display: flex; justify-content: space-between; align-items: center; }
+  .repo-info { flex: 1; }
+  .repo-name { font-size: 11px; color: var(--text); font-weight: 600; }
+  .repo-type { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px; }
+  .repo-amount { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--accent2); }
+  .repo-actions { display: flex; gap: 4px; margin-left: 8px; }
+  .repo-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 4px; transition: color 0.2s; line-height: 1; }
+  .repo-btn:hover { color: var(--text); }
+  .repo-btn.danger:hover { color: var(--red); }
+  .repo-add-btn { width: 100%; background: none; border: 1px dashed var(--border2); border-radius: 8px; padding: 8px; color: var(--muted); font-family: var(--font-body); font-size: 11px; cursor: pointer; transition: all 0.2s; margin-top: 4px; }
+  .repo-add-btn:hover { border-color: var(--accent); color: var(--accent2); }
+
+  /* PRIORITY LIST */
+  .priority-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 5px; }
+  .priority-badge { font-size: 9px; font-weight: 700; color: var(--muted); min-width: 14px; }
+  .priority-name { flex: 1; font-size: 11px; color: var(--text); }
+  .priority-arrows { display: flex; flex-direction: column; gap: 1px; }
+  .priority-arrow { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 10px; line-height: 1; padding: 1px 3px; transition: color 0.2s; }
+  .priority-arrow:hover { color: var(--accent2); }
+  .priority-arrow:disabled { opacity: 0.2; cursor: default; }
+
   @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-5px); opacity: 1; } }
 </style>
@@ -223,6 +245,13 @@
 
       <div class="section-label">Upcoming Bills</div>
       <div id="upcoming-bills"></div>
+
+      <div class="section-label">Repositories</div>
+      <div id="repo-list"></div>
+      <button class="repo-add-btn" onclick="openModal_repo()">+ Add Repository</button>
+
+      <div class="section-label">Transfer Priority</div>
+      <div id="priority-list"></div>
     </div>
     <div class="sidebar-footer">
       <button class="settings-btn" onclick="openModal('key-modal')">⚙ Change API Key</button>
@@ -230,7 +259,7 @@
         <button class="settings-btn" onclick="exportState()" style="flex:1;justify-content:center;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 4px;font-size:10px;letter-spacing:0.04em;">↑ Export</button>
         <button class="settings-btn" onclick="openModal('import-modal')" style="flex:1;justify-content:center;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 4px;font-size:10px;letter-spacing:0.04em;">↓ Import</button>
       </div>
-      <div style="margin-top:8px;font-size:9px;color:#2a2a3e;letter-spacing:0.06em;">v2.4</div>
+      <div style="margin-top:8px;font-size:9px;color:#2a2a3e;letter-spacing:0.06em;">v2.5</div>
     </div>
   </div>
 
@@ -292,6 +321,29 @@
   </div>
 </div>
 
+<div id="repo-modal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-title" id="repo-modal-title">Add Repository</div>
+    <div class="modal-sub">A repository is any account outside checking — investments, emergency fund, etc.</div>
+    <div class="setup-label">Name</div>
+    <input class="setup-input" id="repo-name-input" placeholder="Investment Account" style="margin-bottom:12px">
+    <div class="setup-label">Type</div>
+    <select class="setup-input" id="repo-type-input" style="margin-bottom:12px">
+      <option value="savings">Savings</option>
+      <option value="investment">Investment</option>
+      <option value="emergency">Emergency Fund</option>
+      <option value="other">Other</option>
+    </select>
+    <div class="setup-label">Balance</div>
+    <input class="setup-input" id="repo-balance-input" type="number" placeholder="0.00" min="0" step="0.01">
+    <div id="repo-error" style="font-size:11px;color:var(--red);margin-top:8px;display:none;"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('repo-modal')">Cancel</button>
+      <button class="modal-save" onclick="saveRepo()">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="export-toast" style="
   position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
   background:var(--green);color:#0a0a0f;padding:10px 20px;border-radius:10px;
@@ -320,6 +372,8 @@ function freshState() {
     foodCardBalance: 800.00,
     foodCardBudget: 800.00,
     ccInstallments: [],          // [{ name, amount, remainingMonths }]
+    repositories: [],            // [{ id, name, type, balance }]
+    transferPriority: ['savings'], // ordered list of account ids to draw from when negative
     ccAccrued: 0,                // CC expenses accrued in current billing cycle (29th to 28th)
     categories: {
       Food:          { spent: 0, budget: 800 },
@@ -396,6 +450,9 @@ SET_FOOD_BUDGET - manually correct food card budget ceiling:
 
 SET_CATEGORY - set a category's spent and/or budget directly (use for bulk restores):
 { "type": "set_category", "category": "string", "spent": number, "budget": number }
+
+SET_REPOSITORY_BALANCE - update balance of an existing repository by name:
+{ "type": "set_repository_balance", "name": "string", "value": number }
 
 Example single expense:
 {"reply": "Got it - $38 on lunch from the food card.", "actions": [{"type": "expense", "amount": 38, "category": "Food", "account": "foodCard", "name": "Lunch"}]}
@@ -501,13 +558,41 @@ function computeProjection() {
     }
   }
 
+  // Compute shortfall coverage using transfer priority
+  let coverageBreakdown = [];
+  if (goesNegativeOn) {
+    let shortfall = Math.abs(lowestBalance);
+    const priority = finState.transferPriority || ['savings'];
+    for (const accountId of priority) {
+      if (shortfall <= 0) break;
+      let availBal = 0;
+      let accountName = '';
+      if (accountId === 'savings') {
+        availBal = finState.savingsBalance || 0;
+        accountName = 'Savings';
+      } else {
+        const repo = (finState.repositories || []).find(r => r.id === accountId);
+        if (repo) { availBal = repo.balance || 0; accountName = repo.name; }
+      }
+      if (availBal > 0 && accountName) {
+        const use = Math.min(availBal, shortfall);
+        coverageBreakdown.push({ account: accountName, amount: use });
+        shortfall -= use;
+      }
+    }
+    if (shortfall > 0) {
+      coverageBreakdown.push({ account: 'uncovered', amount: shortfall });
+    }
+  }
+
   return {
     projectedBalance:  running,
     lowestBalance,
     lowestDate,
     lowestLabel,
     goesNegativeOn,
-    goesNegativeAfter
+    goesNegativeAfter,
+    coverageBreakdown
   };
 }
 
@@ -707,22 +792,36 @@ function renderSidebar() {
   const curMonth2 = todayMidnight.getMonth();
 
   // This month remaining
-  addUpcoming(curYear2, curMonth2,  5,  'CC Payment',         ccTotal,                    false);
   addUpcoming(curYear2, curMonth2, 10,  'Condo',              fb.condo || 0,              false);
   addUpcoming(curYear2, curMonth2, 13,  'Flooring',           fb.flooring || 0,           false);
   addUpcoming(curYear2, curMonth2, 15,  '2nd Paycheck',       2000,                       true);
   addUpcoming(curYear2, curMonth2, 19,  'Apt Financing',      fb.apartmentFinancing || 0, false);
 
-  // Next two months
-  for (let offset = 1; offset <= 2; offset++) {
+  // CC Payment: always use the NEXT due date (same logic as CC panel)
+  // If we're past the 5th this month, next CC due is the 5th of next month
+  // and that payment includes current ccAccrued + installments (ccTotal)
+  const ccDueMonth = todayMidnight.getDate() > 5 ? curMonth2 + 1 : curMonth2;
+  const ccDueYear  = ccDueMonth > 11 ? curYear2 + 1 : curYear2;
+  const ccDueMonthNorm = ccDueMonth % 12;
+  // If CC due is this month (we're before the 5th), use ccTotal (accrued + installments)
+  // If CC due is next month (we're after the 5th), still use ccTotal — accrued applies to next bill
+  addUpcoming(ccDueYear, ccDueMonthNorm, 5, 'CC Payment', ccTotal, false);
+
+  // Next two months (skipping the month that already has CC from above)
+  for (let offset = 1; offset <= 3; offset++) {
     const absM = curMonth2 + offset;
     const yr   = curYear2 + Math.floor(absM / 12);
     const mo2  = absM % 12;
+
+    // Skip the month that already got the CC payment above
+    const isCCMonth = (yr === ccDueYear && mo2 === ccDueMonthNorm);
+
     const nextInstallTotal = (finState.ccInstallments || [])
       .filter(i => i.remainingMonths > offset)
       .reduce((s, i) => s + i.amount, 0);
+
     addUpcoming(yr, mo2,  1,  '1st Paycheck',    2000,                       true);
-    addUpcoming(yr, mo2,  5,  'CC Payment',       nextInstallTotal,           false);
+    if (!isCCMonth) addUpcoming(yr, mo2, 5, 'CC Payment', nextInstallTotal,  false);
     addUpcoming(yr, mo2, 10,  'Condo',            fb.condo || 0,              false);
     addUpcoming(yr, mo2, 13,  'Flooring',         fb.flooring || 0,           false);
     addUpcoming(yr, mo2, 15,  '2nd Paycheck',     2000,                       true);
@@ -750,6 +849,58 @@ function renderSidebar() {
 
   if (upcomingEvents.filter(e => e.amount > 0).length === 0) {
     billsEl.innerHTML = '<div style="font-size:11px;color:var(--muted)">Nothing scheduled.</div>';
+  }
+
+  // Repositories
+  const repoListEl = document.getElementById('repo-list');
+  if (repoListEl) {
+    const repos = finState.repositories || [];
+    repoListEl.innerHTML = repos.length === 0
+      ? '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">No repositories yet.</div>'
+      : repos.map(rp => `
+        <div class="repo-card">
+          <div class="repo-info">
+            <div class="repo-name">${escHtml(rp.name)}</div>
+            <div class="repo-type">${escHtml(rp.type)}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="repo-amount">${fmt(rp.balance)}</div>
+            <div class="repo-actions">
+              <button class="repo-btn" onclick="editRepo('${rp.id}')" title="Edit">✎</button>
+              <button class="repo-btn danger" onclick="deleteRepo('${rp.id}')" title="Delete">✕</button>
+            </div>
+          </div>
+        </div>`).join('');
+  }
+
+  // Transfer Priority
+  const priorityListEl = document.getElementById('priority-list');
+  if (priorityListEl) {
+    const priority = finState.transferPriority || ['savings'];
+    const repos = finState.repositories || [];
+    // Build display items: savings is always available, repos only if they exist
+    const allAccounts = [
+      { id: 'savings', name: 'Savings' },
+      ...repos.map(r => ({ id: r.id, name: r.name }))
+    ];
+    // Show only accounts in priority list, plus any missing ones at bottom
+    const inPriority = priority.filter(id => id === 'savings' || repos.find(r => r.id === id));
+    const notInPriority = allAccounts.filter(a => !inPriority.includes(a.id));
+    const displayOrder = [...inPriority, ...notInPriority.map(a => a.id)];
+
+    priorityListEl.innerHTML = displayOrder.map((id, idx) => {
+      const acc = allAccounts.find(a => a.id === id);
+      if (!acc) return '';
+      const isActive = inPriority.includes(id);
+      return `<div class="priority-item" style="${!isActive ? 'opacity:0.4' : ''}">
+        <div class="priority-badge">${isActive ? idx + 1 : '-'}</div>
+        <div class="priority-name">${escHtml(acc.name)}</div>
+        <div class="priority-arrows">
+          <button class="priority-arrow" onclick="movePriority('${id}', -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+          <button class="priority-arrow" onclick="movePriority('${id}', 1)" ${idx === displayOrder.length - 1 ? 'disabled' : ''}>▼</button>
+        </div>
+      </div>`;
+    }).join('');
   }
 }
 
@@ -779,6 +930,8 @@ function rolloverMonth() {
     ccInstallments: carriedInstallments,
     ccAccrued: 0,
     fixedBills: finState.fixedBills,
+    repositories: finState.repositories || [],
+    transferPriority: finState.transferPriority || ['savings'],
     categories: {
       ...freshState().categories,
       Food: { spent: 0, budget: newFoodBudget }
@@ -982,6 +1135,13 @@ function applyAction(action) {
       if (action.budget !== undefined) finState.categories[cat].budget = r(Number(action.budget));
       break;
     }
+
+    case 'set_repository_balance': {
+      const repo = (finState.repositories || []).find(rp =>
+        rp.name.toLowerCase() === (action.name || '').toLowerCase());
+      if (repo) repo.balance = r(Number(action.value));
+      break;
+    }
   }
 }
 
@@ -1087,11 +1247,91 @@ function renderMarkdown(str) {
 }
 
 // ---
+// REPOSITORY MANAGEMENT
+// ---
+let editingRepoId = null;
+
+function openModal_repo(id) {
+  editingRepoId = null;
+  document.getElementById('repo-modal-title').textContent = 'Add Repository';
+  document.getElementById('repo-name-input').value = '';
+  document.getElementById('repo-type-input').value = 'savings';
+  document.getElementById('repo-balance-input').value = '';
+  document.getElementById('repo-error').style.display = 'none';
+  openModal('repo-modal');
+}
+
+function editRepo(id) {
+  const repo = (finState.repositories || []).find(r => r.id === id);
+  if (!repo) return;
+  editingRepoId = id;
+  document.getElementById('repo-modal-title').textContent = 'Edit Repository';
+  document.getElementById('repo-name-input').value = repo.name;
+  document.getElementById('repo-type-input').value = repo.type;
+  document.getElementById('repo-balance-input').value = repo.balance;
+  document.getElementById('repo-error').style.display = 'none';
+  openModal('repo-modal');
+}
+
+function saveRepo() {
+  const name    = document.getElementById('repo-name-input').value.trim();
+  const type    = document.getElementById('repo-type-input').value;
+  const balance = parseFloat(document.getElementById('repo-balance-input').value);
+  const errEl   = document.getElementById('repo-error');
+
+  if (!name) { errEl.textContent = 'Name is required.'; errEl.style.display = 'block'; return; }
+  if (isNaN(balance) || balance < 0) { errEl.textContent = 'Enter a valid balance.'; errEl.style.display = 'block'; return; }
+
+  if (!finState.repositories) finState.repositories = [];
+  if (!finState.transferPriority) finState.transferPriority = ['savings'];
+
+  if (editingRepoId) {
+    // Update existing
+    const repo = finState.repositories.find(r => r.id === editingRepoId);
+    if (repo) { repo.name = name; repo.type = type; repo.balance = Math.round(balance * 100) / 100; }
+  } else {
+    // Create new with unique id
+    const id = 'repo_' + Date.now();
+    finState.repositories.push({ id, name, type, balance: Math.round(balance * 100) / 100 });
+    // Add to end of transfer priority
+    finState.transferPriority.push(id);
+  }
+
+  saveData();
+  closeModal('repo-modal');
+  renderSidebar();
+}
+
+function deleteRepo(id) {
+  finState.repositories = (finState.repositories || []).filter(r => r.id !== id);
+  finState.transferPriority = (finState.transferPriority || []).filter(p => p !== id);
+  saveData();
+  renderSidebar();
+}
+
+function movePriority(id, direction) {
+  const priority = finState.transferPriority || [];
+  const idx = priority.indexOf(id);
+  if (idx === -1) {
+    // Not in priority yet — add it
+    finState.transferPriority = [...priority, id];
+  } else {
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= priority.length) return;
+    const updated = [...priority];
+    [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
+    finState.transferPriority = updated;
+  }
+  saveData();
+  renderSidebar();
+}
+
+// ---
 // EXPORT / IMPORT
 // ---
 function exportState() {
   const snapshot = {
-    _version: '2.4',
+    _version: '2.5',
     _exported: new Date().toISOString(),
     ...finState
   };
