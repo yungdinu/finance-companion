@@ -2,187 +2,135 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2.5">
+<meta name="app-version" content="2.7">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Finance Companion</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Epilogue:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0a0a0f;
-    --surface: #111118;
-    --surface2: #18181f;
-    --border: #22222e;
-    --border2: #2a2a38;
-    --text: #e8e8f0;
-    --muted: #5a5a72;
-    --accent: #7c6aff;
-    --accent2: #b8a4ff;
-    --green: #3ddba0;
-    --yellow: #f0b429;
-    --red: #ff5e5e;
-    --blue: #5eb8ff;
-    --font-display: 'Syne', sans-serif;
-    --font-body: 'Epilogue', sans-serif;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: var(--font-body); background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; font-size: 14px; }
-
-  /* SETUP */
-  #setup-screen { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: flex; align-items: center; justify-content: center; }
-  .setup-card { width: min(440px, 92vw); background: var(--surface); border: 1px solid var(--border2); border-radius: 20px; padding: 40px 36px; animation: fadeUp 0.5s ease; }
-  .setup-logo { font-family: var(--font-display); font-size: 22px; font-weight: 800; color: var(--accent2); letter-spacing: -0.02em; margin-bottom: 6px; }
-  .setup-sub { color: var(--muted); font-size: 13px; margin-bottom: 32px; line-height: 1.5; }
-  .setup-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
-  .setup-input { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 14px; color: var(--text); font-family: var(--font-body); font-size: 13px; outline: none; transition: border-color 0.2s; letter-spacing: 0.04em; }
-  .setup-input:focus { border-color: var(--accent); }
-  .setup-hint { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
-  .setup-hint a { color: var(--accent2); text-decoration: none; }
-  .setup-btn { margin-top: 24px; width: 100%; background: var(--accent); border: none; border-radius: 10px; padding: 13px; color: white; font-family: var(--font-display); font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.15s; }
-  .setup-btn:hover { opacity: 0.88; transform: translateY(-1px); }
-  .setup-error { margin-top: 12px; font-size: 12px; color: var(--red); display: none; text-align: center; }
-
-  /* LAYOUT */
-  #app { display: flex; height: 100vh; }
-
-  /* SIDEBAR */
-  #sidebar { width: 270px; min-width: 270px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: all 0.3s ease; overflow: hidden; }
-  #sidebar.collapsed { width: 0; min-width: 0; }
-  .sidebar-header { padding: 22px 20px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; position: relative; }
-  .sidebar-title { font-family: var(--font-display); font-size: 16px; font-weight: 800; color: var(--accent2); letter-spacing: -0.02em; }
-  .sidebar-month { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 0.06em; text-transform: uppercase; }
-  .sidebar-close-btn { display: none; position: absolute; top: 20px; right: 18px; background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; line-height: 1; transition: color 0.2s; padding: 0; }
-  .sidebar-close-btn:hover { color: var(--text); }
-  .sidebar-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
-  .sidebar-body::-webkit-scrollbar { width: 3px; }
-  .sidebar-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-  .sidebar-footer { padding: 12px 18px; border-top: 1px solid var(--border); flex-shrink: 0; }
-  .settings-btn { background: none; border: none; color: var(--muted); font-family: var(--font-body); font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 0; transition: color 0.2s; }
-  .settings-btn:hover { color: var(--text); }
-
-  .section-label { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; margin-top: 20px; }
-  .section-label:first-child { margin-top: 0; }
-
-  /* Balance cards */
-  .balance-grid { display: flex; flex-direction: column; gap: 7px; }
-  .balance-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; }
-  .balance-name { font-size: 10px; color: var(--muted); margin-bottom: 3px; letter-spacing: 0.04em; }
-  .balance-amount { font-family: var(--font-display); font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
-  .bal-green { color: var(--green); }
-  .bal-blue { color: var(--blue); }
-  .bal-purple { color: var(--accent2); }
-  .bal-warn { color: var(--yellow); }
-  .bal-danger { color: var(--red); }
-  .bal-neutral { color: var(--muted); }
-
-  /* Projection card */
-  .projection-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; margin-top: 7px; }
-  .projection-label { font-size: 10px; color: var(--muted); margin-bottom: 3px; letter-spacing: 0.04em; }
-  .projection-amount { font-family: var(--font-display); font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
-  .projection-note { font-size: 9px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
-  .negative-alert { font-size: 10px; color: var(--red); margin-top: 4px; font-weight: 600; }
-
-  /* Budget bars */
-  .budget-item { margin-bottom: 11px; }
-  .budget-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 4px; }
-  .budget-cat { font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #c0c0d8; }
-  .budget-nums { color: var(--muted); }
-  .bar-track { height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
-
-  /* Bills */
-  .bill-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 11px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; }
-  .bill-name { font-size: 11px; color: var(--text); font-weight: 500; }
-  .bill-date { font-size: 10px; color: var(--muted); margin-top: 1px; }
-  .bill-amount { font-size: 12px; font-weight: 700; color: var(--red); font-family: var(--font-display); }
-
-  /* CC cycle tracker */
-  .cc-cycle-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; margin-bottom: 6px; }
-  .cc-cycle-title { font-size: 10px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.04em; }
-  .cc-cycle-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; }
-  .cc-cycle-label { color: var(--muted); }
-  .cc-cycle-val { font-weight: 600; color: var(--text); font-family: var(--font-display); }
-
-  /* CHAT */
-  #chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  .chat-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; background: var(--bg); flex-shrink: 0; }
-  .toggle-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 0; transition: color 0.2s; line-height: 1; }
-  .toggle-btn:hover { color: var(--text); }
-  .chat-title { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--accent2); }
-  .chat-date { margin-left: auto; font-size: 11px; color: var(--muted); }
-  .reset-btn { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--muted); font-family: var(--font-body); font-size: 10px; padding: 4px 9px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.04em; }
-  .reset-btn:hover { border-color: var(--red); color: var(--red); }
-
-  #messages { flex: 1; overflow-y: auto; padding: 20px 18px; display: flex; flex-direction: column; gap: 16px; }
-  #messages::-webkit-scrollbar { width: 3px; }
-  #messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-
-  .msg { display: flex; align-items: flex-start; gap: 9px; animation: fadeUp 0.3s ease; }
-  .msg.user { flex-direction: row-reverse; }
-  .msg-avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; margin-top: 2px; }
-  .msg-bubble { max-width: 70%; padding: 11px 14px; line-height: 1.65; font-size: 13.5px; white-space: pre-wrap; word-break: break-word; }
-  .msg.assistant .msg-bubble { background: var(--surface2); border: 1px solid var(--border); border-radius: 16px 16px 16px 4px; color: var(--text); }
-  .msg.user .msg-bubble { background: linear-gradient(135deg, #5c4aee, #9b6dff); border-radius: 16px 16px 4px 16px; color: white; }
-
-  .typing-dots { display: flex; gap: 4px; padding: 14px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 16px 16px 16px 4px; width: fit-content; }
-  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: bounce 1.3s ease-in-out infinite; }
-  .dot:nth-child(2) { animation-delay: 0.15s; }
-  .dot:nth-child(3) { animation-delay: 0.3s; }
-
-  #input-area { padding: 14px 18px 16px; border-top: 1px solid var(--border); background: var(--bg); flex-shrink: 0; }
-  .input-wrap { display: flex; gap: 9px; align-items: flex-end; background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; padding: 10px 13px; transition: border-color 0.2s; }
-  .input-wrap:focus-within { border-color: var(--accent); }
-  #user-input { flex: 1; background: none; border: none; outline: none; color: var(--text); font-family: var(--font-body); font-size: 13.5px; line-height: 1.5; resize: none; max-height: 130px; overflow-y: auto; }
-  #user-input::placeholder { color: var(--muted); }
-  #user-input::-webkit-scrollbar { width: 0; }
-  .send-btn { width: 30px; height: 30px; border-radius: 8px; border: none; cursor: pointer; background: linear-gradient(135deg, var(--accent), #a67fff); color: white; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: opacity 0.2s, transform 0.15s; }
-  .send-btn:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
-  .send-btn:disabled { background: var(--border2); cursor: not-allowed; transform: none; }
-  .input-hint { text-align: center; font-size: 10px; color: #2a2a3e; margin-top: 7px; }
-
-  /* MODALS */
-  .modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; }
-  .modal-overlay.open { display: flex; }
-  .modal-card { width: min(400px, 90vw); background: var(--surface); border: 1px solid var(--border2); border-radius: 16px; padding: 32px 28px; animation: fadeUp 0.3s ease; }
-  .modal-title { font-family: var(--font-display); font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
-  .modal-sub { color: var(--muted); font-size: 12px; margin-bottom: 20px; line-height: 1.5; }
-  .modal-btns { display: flex; gap: 8px; margin-top: 16px; }
-  .modal-cancel { flex: 1; background: none; border: 1px solid var(--border2); border-radius: 8px; padding: 10px; color: var(--muted); font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: border-color 0.2s; }
-  .modal-cancel:hover { border-color: var(--text); color: var(--text); }
-  .modal-save { flex: 1; background: var(--accent); border: none; border-radius: 8px; padding: 10px; color: white; font-family: var(--font-display); font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
-  .modal-save:hover { opacity: 0.85; }
-
-  /* MOBILE */
-  @media (max-width: 600px) {
-    #sidebar { position: fixed; inset: 0; z-index: 50; width: 100vw !important; min-width: 100vw !important; transform: translateX(0); transition: transform 0.3s ease; }
-    #sidebar.collapsed { transform: translateX(-100%); width: 100vw !important; min-width: 100vw !important; }
-    .sidebar-close-btn { display: flex !important; }
-    .msg-bubble { max-width: 85%; }
-  }
-
-  /* REPOSITORIES */
-  .repo-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 13px; margin-bottom: 7px; display: flex; justify-content: space-between; align-items: center; }
-  .repo-info { flex: 1; }
-  .repo-name { font-size: 11px; color: var(--text); font-weight: 600; }
-  .repo-type { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px; }
-  .repo-amount { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--accent2); }
-  .repo-actions { display: flex; gap: 4px; margin-left: 8px; }
-  .repo-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 4px; transition: color 0.2s; line-height: 1; }
-  .repo-btn:hover { color: var(--text); }
-  .repo-btn.danger:hover { color: var(--red); }
-  .repo-add-btn { width: 100%; background: none; border: 1px dashed var(--border2); border-radius: 8px; padding: 8px; color: var(--muted); font-family: var(--font-body); font-size: 11px; cursor: pointer; transition: all 0.2s; margin-top: 4px; }
-  .repo-add-btn:hover { border-color: var(--accent); color: var(--accent2); }
-
-  /* PRIORITY LIST */
-  .priority-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 5px; }
-  .priority-badge { font-size: 9px; font-weight: 700; color: var(--muted); min-width: 14px; }
-  .priority-name { flex: 1; font-size: 11px; color: var(--text); }
-  .priority-arrows { display: flex; flex-direction: column; gap: 1px; }
-  .priority-arrow { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 10px; line-height: 1; padding: 1px 3px; transition: color 0.2s; }
-  .priority-arrow:hover { color: var(--accent2); }
-  .priority-arrow:disabled { opacity: 0.2; cursor: default; }
-
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-5px); opacity: 1; } }
+:root {
+  --bg:#0a0a0f; --surface:#111118; --surface2:#18181f;
+  --border:#22222e; --border2:#2a2a38; --text:#e8e8f0;
+  --muted:#5a5a72; --accent:#7c6aff; --accent2:#b8a4ff;
+  --green:#3ddba0; --yellow:#f0b429; --red:#ff5e5e; --blue:#5eb8ff;
+  --fd:'Syne',sans-serif; --fb:'Epilogue',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--fb);background:var(--bg);color:var(--text);height:100vh;overflow:hidden;font-size:14px}
+#setup-screen{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center}
+.setup-card{width:min(440px,92vw);background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:40px 36px;animation:fadeUp .5s ease}
+.setup-logo{font-family:var(--fd);font-size:22px;font-weight:800;color:var(--accent2);letter-spacing:-.02em;margin-bottom:6px}
+.setup-sub{color:var(--muted);font-size:13px;margin-bottom:32px;line-height:1.5}
+.setup-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.setup-input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);font-family:var(--fb);font-size:13px;outline:none;transition:border-color .2s;letter-spacing:.04em}
+.setup-input:focus{border-color:var(--accent)}
+.setup-hint{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6}
+.setup-hint a{color:var(--accent2);text-decoration:none}
+.setup-btn{margin-top:24px;width:100%;background:var(--accent);border:none;border-radius:10px;padding:13px;color:#fff;font-family:var(--fd);font-size:14px;font-weight:700;cursor:pointer;transition:opacity .2s,transform .15s}
+.setup-btn:hover{opacity:.88;transform:translateY(-1px)}
+.setup-error{margin-top:12px;font-size:12px;color:var(--red);display:none;text-align:center}
+#app{display:flex;height:100vh}
+#sidebar{width:270px;min-width:270px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:all .3s ease;overflow:hidden}
+#sidebar.collapsed{width:0;min-width:0}
+.sidebar-header{padding:22px 20px 16px;border-bottom:1px solid var(--border);flex-shrink:0;position:relative}
+.sidebar-title{font-family:var(--fd);font-size:16px;font-weight:800;color:var(--accent2);letter-spacing:-.02em}
+.sidebar-month{font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:.06em;text-transform:uppercase}
+.sidebar-close-btn{display:none;position:absolute;top:20px;right:18px;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;transition:color .2s;padding:0}
+.sidebar-close-btn:hover{color:var(--text)}
+.sidebar-body{flex:1;overflow-y:auto;padding:16px 18px}
+.sidebar-body::-webkit-scrollbar{width:3px}
+.sidebar-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.sidebar-footer{padding:12px 18px;border-top:1px solid var(--border);flex-shrink:0}
+.settings-btn{background:none;border:none;color:var(--muted);font-family:var(--fb);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px;padding:0;transition:color .2s}
+.settings-btn:hover{color:var(--text)}
+.section-label{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;margin-top:20px}
+.section-label:first-child{margin-top:0}
+.balance-grid{display:flex;flex-direction:column;gap:7px}
+.balance-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 13px}
+.balance-name{font-size:10px;color:var(--muted);margin-bottom:3px;letter-spacing:.04em}
+.balance-amount{font-family:var(--fd);font-size:17px;font-weight:700;letter-spacing:-.02em}
+.bal-green{color:var(--green)} .bal-blue{color:var(--blue)} .bal-purple{color:var(--accent2)}
+.bal-warn{color:var(--yellow)} .bal-danger{color:var(--red)} .bal-neutral{color:var(--muted)}
+.projection-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-top:7px}
+.projection-label{font-size:10px;color:var(--muted);margin-bottom:3px;letter-spacing:.04em}
+.projection-amount{font-family:var(--fd);font-size:17px;font-weight:700;letter-spacing:-.02em}
+.projection-note{font-size:9px;color:var(--muted);margin-top:3px;line-height:1.4}
+.negative-alert{font-size:10px;margin-top:4px;font-weight:600;line-height:1.4}
+.cc-cycle-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:6px}
+.cc-cycle-title{font-size:10px;color:var(--muted);margin-bottom:6px;letter-spacing:.04em}
+.cc-cycle-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px}
+.cc-cycle-label{color:var(--muted)} .cc-cycle-val{font-weight:600;color:var(--text);font-family:var(--fd)}
+.budget-item{margin-bottom:11px}
+.budget-row{display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px}
+.budget-cat{font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#c0c0d8}
+.budget-nums{color:var(--muted)}
+.bar-track{height:3px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.bill-item{display:flex;justify-content:space-between;align-items:center;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
+.bill-name{font-size:11px;color:var(--text);font-weight:500}
+.bill-date{font-size:10px;color:var(--muted);margin-top:1px}
+.bill-amount{font-size:12px;font-weight:700;font-family:var(--fd)}
+.repo-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center}
+.repo-info{flex:1}
+.repo-name{font-size:11px;color:var(--text);font-weight:600}
+.repo-amount{font-family:var(--fd);font-size:15px;font-weight:700;color:var(--accent2)}
+.repo-actions{display:flex;gap:4px;margin-left:8px}
+.repo-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 4px;transition:color .2s;line-height:1}
+.repo-btn:hover{color:var(--text)} .repo-btn.danger:hover{color:var(--red)}
+.repo-add-btn{width:100%;background:none;border:1px dashed var(--border2);border-radius:8px;padding:8px;color:var(--muted);font-family:var(--fb);font-size:11px;cursor:pointer;transition:all .2s;margin-top:4px}
+.repo-add-btn:hover{border-color:var(--accent);color:var(--accent2)}
+.priority-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:5px}
+.priority-badge{font-size:9px;font-weight:700;color:var(--muted);min-width:14px}
+.priority-name{flex:1;font-size:11px;color:var(--text)}
+.priority-arrows{display:flex;flex-direction:column;gap:1px}
+.priority-arrow{background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;line-height:1;padding:1px 3px;transition:color .2s}
+.priority-arrow:hover{color:var(--accent2)} .priority-arrow:disabled{opacity:.2;cursor:default}
+#chat-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.chat-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--bg);flex-shrink:0}
+.toggle-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;transition:color .2s;line-height:1}
+.toggle-btn:hover{color:var(--text)}
+.chat-title{font-family:var(--fd);font-size:13px;font-weight:700;color:var(--accent2)}
+.chat-date{margin-left:auto;font-size:11px;color:var(--muted)}
+.reset-btn{background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-family:var(--fb);font-size:10px;padding:4px 9px;cursor:pointer;transition:all .2s;letter-spacing:.04em}
+.reset-btn:hover{border-color:var(--red);color:var(--red)}
+#messages{flex:1;overflow-y:auto;padding:20px 18px;display:flex;flex-direction:column;gap:16px}
+#messages::-webkit-scrollbar{width:3px}
+#messages::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.msg{display:flex;align-items:flex-start;gap:9px;animation:fadeUp .3s ease}
+.msg.user{flex-direction:row-reverse}
+.msg-avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;margin-top:2px}
+.msg-bubble{max-width:70%;padding:11px 14px;line-height:1.65;font-size:13.5px;word-break:break-word}
+.msg.assistant .msg-bubble{background:var(--surface2);border:1px solid var(--border);border-radius:16px 16px 16px 4px;color:var(--text)}
+.msg.user .msg-bubble{background:linear-gradient(135deg,#5c4aee,#9b6dff);border-radius:16px 16px 4px 16px;color:#fff;white-space:pre-wrap}
+.typing-dots{display:flex;gap:4px;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:16px 16px 16px 4px;width:fit-content}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:bounce 1.3s ease-in-out infinite}
+.dot:nth-child(2){animation-delay:.15s} .dot:nth-child(3){animation-delay:.3s}
+#input-area{padding:14px 18px 16px;border-top:1px solid var(--border);background:var(--bg);flex-shrink:0}
+.input-wrap{display:flex;gap:9px;align-items:flex-end;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:10px 13px;transition:border-color .2s}
+.input-wrap:focus-within{border-color:var(--accent)}
+#user-input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:var(--fb);font-size:13.5px;line-height:1.5;resize:none;max-height:130px;overflow-y:auto}
+#user-input::placeholder{color:var(--muted)}
+.send-btn{width:30px;height:30px;border-radius:8px;border:none;cursor:pointer;background:linear-gradient(135deg,var(--accent),#a67fff);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s,transform .15s}
+.send-btn:hover:not(:disabled){opacity:.85;transform:translateY(-1px)}
+.send-btn:disabled{background:var(--border2);cursor:not-allowed}
+.input-hint{text-align:center;font-size:10px;color:#2a2a3e;margin-top:7px}
+.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-card{width:min(400px,90vw);background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:32px 28px;animation:fadeUp .3s ease}
+.modal-title{font-family:var(--fd);font-size:16px;font-weight:800;color:var(--text);margin-bottom:6px}
+.modal-sub{color:var(--muted);font-size:12px;margin-bottom:20px;line-height:1.5}
+.modal-btns{display:flex;gap:8px;margin-top:16px}
+.modal-cancel{flex:1;background:none;border:1px solid var(--border2);border-radius:8px;padding:10px;color:var(--muted);font-family:var(--fb);font-size:13px;cursor:pointer;transition:border-color .2s}
+.modal-cancel:hover{border-color:var(--text);color:var(--text)}
+.modal-save{flex:1;background:var(--accent);border:none;border-radius:8px;padding:10px;color:#fff;font-family:var(--fd);font-size:13px;font-weight:700;cursor:pointer;transition:opacity .2s}
+.modal-save:hover{opacity:.85}
+@media (max-width:600px){
+  #sidebar{position:fixed;inset:0;z-index:50;width:100vw !important;min-width:100vw !important;transform:translateX(0);transition:transform .3s ease}
+  #sidebar.collapsed{transform:translateX(-100%);width:100vw !important;min-width:100vw !important}
+  .sidebar-close-btn{display:flex !important}
+  .msg-bubble{max-width:85%}
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
 </style>
 </head>
 <body>
@@ -190,12 +138,12 @@
 <div id="setup-screen">
   <div class="setup-card">
     <div class="setup-logo">Finance Companion</div>
-    <div class="setup-sub">Your personal finance buddy. Enter your Anthropic API key to get started — stored only on this device.</div>
+    <div class="setup-sub">Your personal finance buddy. Enter your Anthropic API key to get started.</div>
     <div class="setup-label">Anthropic API Key</div>
     <input type="password" class="setup-input" id="setup-key-input" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
-    <div class="setup-hint">Get your key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>. Never leaves your device.</div>
-    <div class="setup-error" id="setup-error">Invalid key — should start with sk-ant-</div>
-    <button class="setup-btn" onclick="saveApiKey()">Launch Finance Companion →</button>
+    <div class="setup-hint">Get your key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>. Stored only on this device.</div>
+    <div class="setup-error" id="setup-error">Invalid key - should start with sk-ant-</div>
+    <button class="setup-btn" onclick="saveApiKey()">Launch Finance Companion</button>
   </div>
 </div>
 
@@ -203,15 +151,16 @@
   <div id="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-title">Finance Companion</div>
-      <div class="sidebar-month" id="sidebar-month">—</div>
-      <button class="sidebar-close-btn" onclick="toggleSidebar()">✕</button>
+      <div class="sidebar-month" id="sidebar-month">-</div>
+      <button class="sidebar-close-btn" onclick="toggleSidebar()">&#x2715;</button>
     </div>
     <div class="sidebar-body">
+
       <div class="section-label">Balances</div>
       <div class="balance-grid">
         <div class="balance-card">
           <div class="balance-name">Checking Account</div>
-          <div class="balance-amount bal-neutral" id="bal-checking">—</div>
+          <div class="balance-amount bal-neutral" id="bal-checking">-</div>
         </div>
         <div class="balance-card">
           <div class="balance-name">Food Card</div>
@@ -219,65 +168,77 @@
         </div>
         <div class="balance-card">
           <div class="balance-name">Savings</div>
-          <div class="balance-amount bal-purple" id="bal-savings">—</div>
+          <div class="balance-amount bal-purple" id="bal-savings">-</div>
         </div>
       </div>
 
-      <div class="section-label">Next Month Projection</div>
+      <div class="section-label">Projection</div>
       <div class="projection-card">
-        <div class="projection-label">Projected Balance</div>
-        <div class="projection-amount bal-neutral" id="proj-amount">—</div>
-        <div class="projection-note" id="proj-note">Update checking balance to activate</div>
+        <div class="projection-label">Next Crunch Point</div>
+        <div class="projection-amount bal-neutral" id="proj-amount">-</div>
+        <div class="projection-note" id="proj-note">Set checking balance to activate</div>
         <div class="negative-alert" id="proj-alert" style="display:none"></div>
       </div>
 
       <div class="section-label">CC Billing Cycle</div>
+      <div class="cc-cycle-card" id="cc-closed-card" style="display:none">
+        <div class="cc-cycle-title" id="cc-closed-label">Closed cycle</div>
+        <div class="cc-cycle-row"><span class="cc-cycle-label">Installments</span><span class="cc-cycle-val" id="cc-closed-installments">-</span></div>
+        <div class="cc-cycle-row"><span class="cc-cycle-label">Accrued expenses</span><span class="cc-cycle-val" id="cc-closed-expenses">-</span></div>
+        <div class="cc-cycle-row" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--border)">
+          <span class="cc-cycle-label" style="font-weight:600;color:var(--text)">Total due</span>
+          <span class="cc-cycle-val" id="cc-closed-total" style="color:var(--red)">-</span>
+        </div>
+      </div>
       <div class="cc-cycle-card">
-        <div class="cc-cycle-title">Credit Card</div>
-        <div class="cc-cycle-row"><span class="cc-cycle-label">Next due (5th)</span><span class="cc-cycle-val" id="cc-next-due">—</span></div>
-        <div class="cc-cycle-row"><span class="cc-cycle-label">Installments</span><span class="cc-cycle-val" id="cc-installments-total">—</span></div>
-        <div class="cc-cycle-row"><span class="cc-cycle-label">Accrued this cycle</span><span class="cc-cycle-val" id="cc-accrued">$0.00</span></div>
-        <div class="cc-cycle-row" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--border)"><span class="cc-cycle-label" style="font-weight:600;color:var(--text)">Total due</span><span class="cc-cycle-val" id="cc-total-due" style="color:var(--red)">—</span></div>
+        <div class="cc-cycle-title" id="cc-open-label">Open cycle - accruing</div>
+        <div class="cc-cycle-row"><span class="cc-cycle-label">Installments</span><span class="cc-cycle-val" id="cc-installments-total">-</span></div>
+        <div class="cc-cycle-row"><span class="cc-cycle-label">Accrued so far</span><span class="cc-cycle-val" id="cc-accrued">$0.00</span></div>
+        <div class="cc-cycle-row" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--border)">
+          <span class="cc-cycle-label" style="color:var(--muted)">Est. next bill</span>
+          <span class="cc-cycle-val" id="cc-total-due" style="color:var(--muted)">-</span>
+        </div>
       </div>
 
       <div class="section-label">Spending This Month</div>
       <div id="budget-bars"></div>
 
-      <div class="section-label">Upcoming Bills</div>
+      <div class="section-label">Upcoming</div>
       <div id="upcoming-bills"></div>
 
       <div class="section-label">Repositories</div>
       <div id="repo-list"></div>
-      <button class="repo-add-btn" onclick="openModal_repo()">+ Add Repository</button>
+      <button class="repo-add-btn" onclick="openRepoModal()">+ Add Repository</button>
 
       <div class="section-label">Transfer Priority</div>
       <div id="priority-list"></div>
+
     </div>
     <div class="sidebar-footer">
-      <button class="settings-btn" onclick="openModal('key-modal')">⚙ Change API Key</button>
-      <div style="margin-top:12px;display:flex;gap:6px;">
-        <button class="settings-btn" onclick="exportState()" style="flex:1;justify-content:center;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 4px;font-size:10px;letter-spacing:0.04em;">↑ Export</button>
-        <button class="settings-btn" onclick="openModal('import-modal')" style="flex:1;justify-content:center;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 4px;font-size:10px;letter-spacing:0.04em;">↓ Import</button>
+      <button class="settings-btn" onclick="openModal('key-modal')">&#x2699; Change API Key</button>
+      <div style="margin-top:12px;display:flex;gap:6px">
+        <button class="settings-btn" onclick="exportState()" style="flex:1;justify-content:center;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 4px;font-size:10px">&#x2191; Export</button>
+        <button class="settings-btn" onclick="openModal('import-modal')" style="flex:1;justify-content:center;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 4px;font-size:10px">&#x2193; Import</button>
       </div>
-      <div style="margin-top:8px;font-size:9px;color:#2a2a3e;letter-spacing:0.06em;">v2.5</div>
+      <div style="margin-top:8px;font-size:9px;color:#2a2a3e;letter-spacing:.06em">v2.7 - CC Billing Cycle Tracking</div>
     </div>
   </div>
 
   <div id="chat-area">
     <div class="chat-header">
-      <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+      <button class="toggle-btn" onclick="toggleSidebar()">&#x2630;</button>
       <div class="chat-title">Chat</div>
       <div class="chat-date" id="chat-date"></div>
-      <button class="reset-btn" onclick="openModal('reset-modal')">New Month →</button>
+      <button class="reset-btn" onclick="openModal('reset-modal')">New Month</button>
     </div>
     <div id="messages"></div>
     <div id="input-area">
       <div class="input-wrap">
         <textarea id="user-input" rows="1" placeholder="Just spent $12 on lunch..."
           onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-        <button class="send-btn" id="send-btn" onclick="sendMessage()">↑</button>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()">&#x2191;</button>
       </div>
-      <div class="input-hint">Enter to send · Shift+Enter for new line</div>
+      <div class="input-hint">Enter to send &middot; Shift+Enter for new line</div>
     </div>
   </div>
 </div>
@@ -298,7 +259,7 @@
 <div id="reset-modal" class="modal-overlay">
   <div class="modal-card">
     <div class="modal-title">Roll Over to Next Month?</div>
-    <div class="modal-sub">Spending resets, food card reloads (adjusted for overage), CC installments carry forward, chat clears. Balances and savings preserved.</div>
+    <div class="modal-sub">Spending resets, food card reloads (adjusted for overage if negative), CC fields carry forward, chat clears. Balances, repositories, and savings preserved.</div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('reset-modal')">Cancel</button>
       <button class="modal-save" style="background:var(--red)" onclick="rolloverMonth()">Roll Over</button>
@@ -309,11 +270,11 @@
 <div id="import-modal" class="modal-overlay">
   <div class="modal-card">
     <div class="modal-title">Import Backup</div>
-    <div class="modal-sub">Paste your exported JSON below. This will fully replace current state. Chat history will be cleared.</div>
+    <div class="modal-sub">Paste your exported JSON. This replaces current state. Chat history clears.</div>
     <textarea id="import-input" class="setup-input" rows="6"
-      style="resize:vertical;min-height:100px;font-size:11px;font-family:monospace;letter-spacing:0;"
+      style="resize:vertical;min-height:100px;font-size:11px;font-family:monospace;letter-spacing:0"
       placeholder='{"month":"...","checkingBalance":...}'></textarea>
-    <div id="import-error" style="font-size:11px;color:var(--red);margin-top:8px;display:none;"></div>
+    <div id="import-error" style="font-size:11px;color:var(--red);margin-top:8px;display:none"></div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('import-modal')">Cancel</button>
       <button class="modal-save" onclick="importState()">Restore</button>
@@ -324,19 +285,12 @@
 <div id="repo-modal" class="modal-overlay">
   <div class="modal-card">
     <div class="modal-title" id="repo-modal-title">Add Repository</div>
-    <div class="modal-sub">A repository is any account outside checking — investments, emergency fund, etc.</div>
+    <div class="modal-sub">Any account outside checking - investments, emergency fund, etc.</div>
     <div class="setup-label">Name</div>
     <input class="setup-input" id="repo-name-input" placeholder="Investment Account" style="margin-bottom:12px">
-    <div class="setup-label">Type</div>
-    <select class="setup-input" id="repo-type-input" style="margin-bottom:12px">
-      <option value="savings">Savings</option>
-      <option value="investment">Investment</option>
-      <option value="emergency">Emergency Fund</option>
-      <option value="other">Other</option>
-    </select>
     <div class="setup-label">Balance</div>
     <input class="setup-input" id="repo-balance-input" type="number" placeholder="0.00" min="0" step="0.01">
-    <div id="repo-error" style="font-size:11px;color:var(--red);margin-top:8px;display:none;"></div>
+    <div id="repo-error" style="font-size:11px;color:var(--red);margin-top:8px;display:none"></div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('repo-modal')">Cancel</button>
       <button class="modal-save" onclick="saveRepo()">Save</button>
@@ -344,37 +298,29 @@
   </div>
 </div>
 
-<div id="export-toast" style="
-  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
-  background:var(--green);color:#0a0a0f;padding:10px 20px;border-radius:10px;
-  font-size:12px;font-weight:600;opacity:0;transition:all 0.3s ease;z-index:300;
-  pointer-events:none;white-space:nowrap;">
-  ✓ Copied to clipboard
+<div id="export-toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#0a0a0f;padding:10px 20px;border-radius:10px;font-size:12px;font-weight:600;opacity:0;transition:all .3s ease;z-index:300;pointer-events:none;white-space:nowrap">
+  Copied to clipboard
 </div>
 
 <script>
-// ---
-// CONSTANTS
-// ---
 const STORAGE_KEY = 'fc_data_v2';
 const MODEL = 'claude-sonnet-4-6';
 
-// ---
-// DEFAULT STATE
-// ---
 function freshState() {
   const now = new Date();
   const month = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   return {
-    month,
-    checkingBalance: null,       // null = not set yet
+    month: month,
+    checkingBalance: null,
     savingsBalance: null,
-    foodCardBalance: 800.00,
-    foodCardBudget: 800.00,
-    ccInstallments: [],          // [{ name, amount, remainingMonths }]
-    repositories: [],            // [{ id, name, type, balance }]
-    transferPriority: ['savings'], // ordered list of account ids to draw from when negative
-    ccAccrued: 0,                // CC expenses accrued in current billing cycle (29th to 28th)
+    foodCardBalance: 800,
+    foodCardBudget: 800,
+    ccInstallments: [],
+    repositories: [],
+    transferPriority: ['savings'],
+    ccOpenAccrued: 0,
+    ccClosedAccrued: 0,
+    ccCycleClosedMonth: null,
     categories: {
       Food:          { spent: 0, budget: 800 },
       Transport:     { spent: 0, budget: 0 },
@@ -384,229 +330,188 @@ function freshState() {
       Shopping:      { spent: 0, budget: 0 },
       Other:         { spent: 0, budget: 0 }
     },
-    fixedBills: {
-      flooring: 600,
-      condo: 600,
-      apartmentFinancing: 2000
-    },
+    fixedBills: { flooring: 600, condo: 600, apartmentFinancing: 2000 },
     monthlyExpenses: [],
     notes: ''
   };
 }
 
-// ---
-// SYSTEM PROMPT - action-based contract
-// AI classifies intent, app does all math
-// ---
 const SYSTEM_PROMPT = `You are a personal Finance Companion - a financially-savvy, warm, direct friend.
 
-## PROFILE
+PROFILE
 - Salary: $4,000/month ($2,000 on 1st, $2,000 on 15th)
-- Food card: loads $800 on the 1st (separate from salary). Budget may be reduced if previous month went over.
+- Food card: loads each 1st (base $800, reduced if previous month went negative)
 - Fixed bills: Flooring ~13th, Condo ~10th, CC due 5th, Apartment financing ~19th ($2,000)
-- CC billing cycle: opens 29th two months ago, closes 28th of last month, due 5th current month
-- ccInstallments persist across months; ccAccrued tracks CC-tagged spending in current billing window
+- CC billing cycle: closes 28th, new cycle opens immediately. Bill due 5th.
+- ccOpenAccrued: running total of CC expenses in the current open cycle
+- ccClosedAccrued: frozen closed cycle total (installments snapshot + open accrued at close). This is the actual amount due on the 5th.
+- If user says they paid CC bill but ccClosedAccrued is 0, warn them cycle may not be closed yet
 
-## HOW TO REPLY
-- Keep replies to 2-4 sentences. Warm, direct, no bullet points.
-- For expenses: acknowledge what it was, mention the category, note remaining budget in that category if relevant.
-- Never invent numbers. If unsure what account or category something belongs to, make your best call and mention it.
-- For questions or summaries: give a clear, friendly overview based on the current state provided.
+HOW TO REPLY
+- 2-4 sentences. Warm, direct, no bullet points.
+- For expenses: acknowledge it, mention category, note remaining budget if relevant.
+- Never invent numbers. If unsure, ask.
 
-## RESPONSE FORMAT - CRITICAL
-You MUST respond with ONLY a valid JSON object. No text before or after. No markdown fences.
-The object has exactly two fields: "reply" and "action".
-
-"reply": string - your friendly conversational response shown in chat.
-
-"actions": array of action objects to apply in order. Use multiple actions for bulk updates. Empty array [] if no state change needed.
+RESPONSE FORMAT - CRITICAL
+Respond with ONLY a valid JSON object. No text outside it. No markdown fences.
+Fields: "reply" (string) and "actions" (array, empty if no change).
 
 Action types:
+expense: {"type":"expense","amount":number,"category":"string","account":"foodCard"|"checking"|"cc","name":"string"}
+  account cc = deducted from checking AND adds to ccOpenAccrued
+income: {"type":"income","amount":number,"account":"checking"|"savings"}
+set_balance: {"type":"set_balance","account":"checking"|"savings"|"foodCard","value":number}
+add_installment: {"type":"add_installment","name":"string","amount":number,"remainingMonths":number}
+remove_installment: {"type":"remove_installment","name":"string"}
+update_bill: {"type":"update_bill","bill":"flooring"|"condo"|"apartmentFinancing","amount":number}
+set_food_budget: {"type":"set_food_budget","amount":number}
+set_category: {"type":"set_category","category":"string","spent":number,"budget":number}
+set_repository_balance: {"type":"set_repository_balance","name":"string","value":number}
+pay_cc_bill: {"type":"pay_cc_bill"} - deducts ccClosedAccrued from checking and zeros it. If ccClosedAccrued is 0, warn user instead.
 
-EXPENSE - user spent money:
-{ "type": "expense", "amount": number, "category": "string", "account": "foodCard"|"checking"|"cc", "name": "string" }
-- account "foodCard": deducted from food card balance
-- account "checking": deducted from checking balance
-- account "cc": deducted from checking AND adds to ccAccrued (CC purchase)
-- category: use existing ones or create a new sensible one
+Example: {"reply":"Got it - $38 on lunch from the food card.","actions":[{"type":"expense","amount":38,"category":"Food","account":"foodCard","name":"Lunch"}]}
 
-INCOME - user received money:
-{ "type": "income", "amount": number, "account": "checking"|"savings" }
+NEVER output text outside the JSON. NEVER use markdown. Response must be parseable by JSON.parse().`;
 
-SET_BALANCE - user reports an actual balance:
-{ "type": "set_balance", "account": "checking"|"savings"|"foodCard", "value": number }
-
-ADD_INSTALLMENT - user adds or updates a CC installment:
-{ "type": "add_installment", "name": "string", "amount": number, "remainingMonths": number }
-
-REMOVE_INSTALLMENT - user paid off or removes an installment:
-{ "type": "remove_installment", "name": "string" }
-
-UPDATE_BILL - user updates a fixed bill amount:
-{ "type": "update_bill", "bill": "flooring"|"condo"|"apartmentFinancing", "amount": number }
-
-SET_FOOD_BUDGET - manually correct food card budget ceiling:
-{ "type": "set_food_budget", "amount": number }
-
-SET_CATEGORY - set a category's spent and/or budget directly (use for bulk restores):
-{ "type": "set_category", "category": "string", "spent": number, "budget": number }
-
-SET_REPOSITORY_BALANCE - update balance of an existing repository by name:
-{ "type": "set_repository_balance", "name": "string", "value": number }
-
-Example single expense:
-{"reply": "Got it - $38 on lunch from the food card.", "actions": [{"type": "expense", "amount": 38, "category": "Food", "account": "foodCard", "name": "Lunch"}]}
-
-Example bulk profile restore (paste your full profile and AI returns all at once):
-{"reply": "All synced! Here's where you stand...", "actions": [{"type": "set_balance", "account": "checking", "value": 636}, {"type": "set_balance", "account": "savings", "value": 1290}, {"type": "add_installment", "name": "iPhone", "amount": 219, "remainingMonths": 999}, {"type": "set_category", "category": "Food", "spent": 455.57, "budget": 743}]}
-
-NEVER include any text outside the JSON object. NEVER use markdown. Your entire response must be parseable by JSON.parse().`;
-
-// ---
-// APP STATE
-// ---
 let apiKey = '';
 let finState = freshState();
-let messages = [];  // stored as { role, content } - content is always clean reply text
+let messages = [];
 let sidebarOpen = true;
+let editingRepoId = null;
 
-// ---
-// PROJECTION ENGINE (pure JS, no AI)
-// Runs month by month until balance goes negative
-// or 18 months, whichever comes first.
-// ---
+function r(n) { return Math.round(n * 100) / 100; }
+
+function checkCCCycle() {
+  const today = new Date();
+  const day = today.getDate();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const alreadyClosed = finState.ccCycleClosedMonth &&
+    finState.ccCycleClosedMonth.year === year &&
+    finState.ccCycleClosedMonth.month === month;
+  if (day >= 28 && !alreadyClosed) {
+    const instSnap = (finState.ccInstallments || []).reduce(function(s, i) { return s + i.amount; }, 0);
+    finState.ccClosedAccrued = r(instSnap + (finState.ccOpenAccrued || 0));
+    finState.ccOpenAccrued = 0;
+    finState.ccCycleClosedMonth = { year: year, month: month };
+    saveData();
+  }
+}
+
 function computeProjection() {
   if (finState.checkingBalance === null) return null;
+  const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  const fb = finState.fixedBills || {};
+  const condo = fb.condo || 600;
+  const flooring = fb.flooring || 600;
+  const aptFin = fb.apartmentFinancing || 2000;
+  let insts = (finState.ccInstallments || []).map(function(i) { return Object.assign({}, i); });
+  const firstCCDue = finState.ccClosedAccrued > 0
+    ? finState.ccClosedAccrued
+    : insts.reduce(function(s, i) { return s + i.amount; }, 0) + (finState.ccOpenAccrued || 0);
 
-  const now   = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  const fb       = finState.fixedBills || {};
-  const condo    = fb.condo              || 600;
-  const flooring = fb.flooring           || 600;
-  const aptFin   = fb.apartmentFinancing || 2000;
-
-  // Deep-copy installments so we can tick them without mutating state
-  let insts = (finState.ccInstallments || []).map(i => ({ ...i }));
-  const firstCCDue = insts.reduce((s,i) => s + i.amount, 0) + (finState.ccAccrued || 0);
-
-  function instTotal(arr) { return arr.reduce((s,i) => s + i.amount, 0); }
+  function instTotal(arr) { return arr.reduce(function(s, i) { return s + i.amount; }, 0); }
   function tickInsts(arr) {
-    return arr.map(i => ({ ...i, remainingMonths: i.remainingMonths - 1 }))
-              .filter(i => i.remainingMonths > 0);
+    return arr.map(function(i) { return Object.assign({}, i, { remainingMonths: i.remainingMonths - 1 }); })
+              .filter(function(i) { return i.remainingMonths > 0; });
   }
 
-  const events = [];
+  var events = [];
   function addEvent(y, m, d, label, amount) {
-    const evDate = new Date(y, m, d);
-    if (evDate > today) events.push({ date: evDate, label, amount });
+    var evDate = new Date(y, m, d);
+    if (evDate > today) events.push({ date: evDate, label: label, amount: amount });
   }
 
-  const curYear  = today.getFullYear();
-  const curMonth = today.getMonth();
+  var cy = today.getFullYear();
+  var cm = today.getMonth();
+  addEvent(cy, cm, 5,  'CC Payment',    -firstCCDue);
+  addEvent(cy, cm, 10, 'Condo',         -condo);
+  addEvent(cy, cm, 13, 'Flooring',      -flooring);
+  addEvent(cy, cm, 15, '2nd Paycheck',  +2000);
+  addEvent(cy, cm, 19, 'Apt Financing', -aptFin);
 
-  // --- CURRENT MONTH: only events still in the future --
-  addEvent(curYear, curMonth,  5, 'CC Payment',         -(firstCCDue));
-  addEvent(curYear, curMonth, 10, 'Condo',              -condo);
-  addEvent(curYear, curMonth, 13, 'Flooring',           -flooring);
-  addEvent(curYear, curMonth, 15, '2nd Paycheck',       +2000);
-  addEvent(curYear, curMonth, 19, 'Apt Financing',      -aptFin);
-
-  // --- FUTURE MONTHS: up to 18, stop building after first negative --
-  // We pre-build all events then walk; easier than interleaving tick logic.
-  // Track installment state per month offset.
-  let monthInsts = insts;
-  for (let offset = 1; offset <= 18; offset++) {
-    const absMonth = curMonth + offset;
-    const yr = curYear + Math.floor(absMonth / 12);
-    const mo = absMonth % 12;
-
-    // Tick installments: the CC due this month reflects what remains
-    // after the previous payment (offset-1 payments already made).
-    const ccThisMonth = instTotal(monthInsts);
-
-    addEvent(yr, mo,  1, '1st Paycheck',  +2000);
-    addEvent(yr, mo,  5, 'CC Payment',    -ccThisMonth);
+  var monthInsts = insts;
+  for (var offset = 1; offset <= 18; offset++) {
+    var absM = cm + offset;
+    var yr = cy + Math.floor(absM / 12);
+    var mo = absM % 12;
+    var ccThis = instTotal(monthInsts);
+    addEvent(yr, mo, 1,  '1st Paycheck',  +2000);
+    addEvent(yr, mo, 5,  'CC Payment',    -ccThis);
     addEvent(yr, mo, 10, 'Condo',         -condo);
     addEvent(yr, mo, 13, 'Flooring',      -flooring);
     addEvent(yr, mo, 15, '2nd Paycheck',  +2000);
     addEvent(yr, mo, 19, 'Apt Financing', -aptFin);
-
     monthInsts = tickInsts(monthInsts);
   }
 
-  events.sort((a, b) => a.date - b.date);
+  events.sort(function(a, b) { return a.date - b.date; });
+  var running = finState.checkingBalance;
+  var goesNegOn = null;
+  var goesNegAfter = null;
+  var lowestBal = running;
+  var lowestDate = null;
+  var lowestLabel = 'starting balance';
 
-  let running        = finState.checkingBalance;
-  let goesNegativeOn = null;
-  let goesNegativeAfter = null; // the event label that caused it
-  let lowestBalance  = running;
-  let lowestDate     = null;
-  let lowestLabel    = 'starting balance';
-
-  for (const ev of events) {
-    running = Math.round((running + ev.amount) * 100) / 100;
-    if (running < lowestBalance) {
-      lowestBalance = running;
-      lowestDate    = ev.date;
-      lowestLabel   = ev.label;
+  for (var i = 0; i < events.length; i++) {
+    var ev = events[i];
+    running = r(running + ev.amount);
+    if (running < lowestBal) {
+      lowestBal = running;
+      lowestDate = ev.date;
+      lowestLabel = ev.label;
     }
-    if (running < 0 && !goesNegativeOn) {
-      goesNegativeOn    = ev.date;
-      goesNegativeAfter = ev.label;
-      break; // stop - we found the answer
+    if (running < 0 && !goesNegOn) {
+      goesNegOn = ev.date;
+      goesNegAfter = ev.label;
+      break;
     }
   }
 
-  // Compute shortfall coverage using transfer priority
-  let coverageBreakdown = [];
-  if (goesNegativeOn) {
-    let shortfall = Math.abs(lowestBalance);
-    const priority = finState.transferPriority || ['savings'];
-    for (const accountId of priority) {
+  var coverage = [];
+  if (goesNegOn) {
+    var shortfall = Math.abs(lowestBal);
+    var priority = finState.transferPriority || ['savings'];
+    for (var j = 0; j < priority.length; j++) {
       if (shortfall <= 0) break;
-      let availBal = 0;
-      let accountName = '';
-      if (accountId === 'savings') {
+      var pid = priority[j];
+      var availBal = 0;
+      var accName = '';
+      if (pid === 'savings') {
         availBal = finState.savingsBalance || 0;
-        accountName = 'Savings';
+        accName = 'Savings';
       } else {
-        const repo = (finState.repositories || []).find(r => r.id === accountId);
-        if (repo) { availBal = repo.balance || 0; accountName = repo.name; }
+        var repo = (finState.repositories || []).find(function(rp) { return rp.id === pid; });
+        if (repo) { availBal = repo.balance || 0; accName = repo.name; }
       }
-      if (availBal > 0 && accountName) {
-        const use = Math.min(availBal, shortfall);
-        coverageBreakdown.push({ account: accountName, amount: use });
+      if (availBal > 0 && accName) {
+        var use = Math.min(availBal, shortfall);
+        coverage.push({ account: accName, amount: use });
         shortfall -= use;
       }
     }
-    if (shortfall > 0) {
-      coverageBreakdown.push({ account: 'uncovered', amount: shortfall });
-    }
+    if (shortfall > 0) coverage.push({ account: 'uncovered', amount: shortfall });
   }
 
   return {
-    projectedBalance:  running,
-    lowestBalance,
-    lowestDate,
-    lowestLabel,
-    goesNegativeOn,
-    goesNegativeAfter,
-    coverageBreakdown
+    projectedBalance: running,
+    lowestBalance: lowestBal,
+    lowestDate: lowestDate,
+    lowestLabel: lowestLabel,
+    goesNegativeOn: goesNegOn,
+    goesNegativeAfter: goesNegAfter,
+    coverageBreakdown: coverage
   };
 }
 
-// ---
-// INIT & STORAGE
-// ---
 function init() {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  var saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
     try {
-      const d = JSON.parse(saved);
-      apiKey    = d.apiKey    || '';
-      finState  = d.finState  || freshState();
-      messages  = d.messages  || [];
+      var d = JSON.parse(saved);
+      apiKey = d.apiKey || '';
+      finState = d.finState || freshState();
+      messages = d.messages || [];
     } catch(e) {}
   }
   if (!apiKey) {
@@ -618,10 +523,11 @@ function init() {
 }
 
 function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiKey, finState, messages }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiKey: apiKey, finState: finState, messages: messages }));
 }
 
 function launchApp() {
+  checkCCCycle();
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   document.getElementById('chat-date').textContent =
@@ -629,15 +535,12 @@ function launchApp() {
   renderSidebar();
   renderMessages();
   if (messages.length === 0) {
-    addMessage('assistant', "Hey! Finance Companion is live 💸 Your profile is ready - checking and savings are at zero until you tell me the real values. Food card is at $800.\n\nJust talk to me naturally. What's up?");
+    addMessage('assistant', "Hey! Finance Companion is live. Your profile is ready - checking and savings are at zero until you update me with the real values.\n\nJust talk naturally. What's up?");
   }
 }
 
-// ---
-// SETUP / API KEY
-// ---
 function saveApiKey() {
-  const key = document.getElementById('setup-key-input').value.trim();
+  var key = document.getElementById('setup-key-input').value.trim();
   if (!key.startsWith('sk-ant-')) { document.getElementById('setup-error').style.display = 'block'; return; }
   apiKey = key;
   saveData();
@@ -645,23 +548,17 @@ function saveApiKey() {
 }
 
 function updateApiKey() {
-  const key = document.getElementById('modal-key-input').value.trim();
+  var key = document.getElementById('modal-key-input').value.trim();
   if (key.startsWith('sk-ant-')) { apiKey = key; saveData(); closeModal('key-modal'); }
 }
 
-document.getElementById('setup-key-input').addEventListener('keydown', e => {
+document.getElementById('setup-key-input').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') saveApiKey();
 });
 
-// ---
-// MODALS
-// ---
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-// ---
-// SIDEBAR
-// ---
 function toggleSidebar() {
   sidebarOpen = !sidebarOpen;
   document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
@@ -670,493 +567,377 @@ function toggleSidebar() {
 function renderSidebar() {
   document.getElementById('sidebar-month').textContent = finState.month || '-';
 
-  // Checking
-  const checkEl = document.getElementById('bal-checking');
-  const chk = finState.checkingBalance;
+  var chk = finState.checkingBalance;
+  var checkEl = document.getElementById('bal-checking');
   checkEl.textContent = chk !== null ? fmt(chk) : '-';
-  checkEl.className = 'balance-amount ' +
-    (chk === null ? 'bal-neutral' : chk < 0 ? 'bal-danger' : chk < 200 ? 'bal-warn' : 'bal-green');
+  checkEl.className = 'balance-amount ' + (chk === null ? 'bal-neutral' : chk < 0 ? 'bal-danger' : chk < 200 ? 'bal-warn' : 'bal-green');
 
-  // Food card
-  const foodEl = document.getElementById('bal-food');
-  const food = finState.foodCardBalance;
+  var food = finState.foodCardBalance;
+  var foodEl = document.getElementById('bal-food');
   foodEl.textContent = fmt(food);
   foodEl.className = 'balance-amount ' + (food < 0 ? 'bal-danger' : food < 150 ? 'bal-warn' : 'bal-blue');
 
-  // Savings
-  const sav = finState.savingsBalance;
+  var sav = finState.savingsBalance;
   document.getElementById('bal-savings').textContent = sav !== null ? fmt(sav) : '-';
 
-  // Projection
-  const proj = computeProjection();
-  const projAmtEl  = document.getElementById('proj-amount');
-  const projNoteEl = document.getElementById('proj-note');
-  const projAlertEl = document.getElementById('proj-alert');
+  var proj = computeProjection();
+  var projAmtEl = document.getElementById('proj-amount');
+  var projNoteEl = document.getElementById('proj-note');
+  var projAlertEl = document.getElementById('proj-alert');
 
   if (!proj) {
     projAmtEl.textContent = '-';
     projAmtEl.className = 'projection-amount bal-neutral';
     projNoteEl.textContent = 'Set checking balance to activate';
     projAlertEl.style.display = 'none';
+  } else if (proj.goesNegativeOn) {
+    var negDate = proj.goesNegativeOn.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    projAmtEl.textContent = fmt(proj.lowestBalance);
+    projAmtEl.className = 'projection-amount bal-danger';
+    projNoteEl.textContent = 'After ' + proj.goesNegativeAfter + ' on ' + negDate;
+    var cb = proj.coverageBreakdown || [];
+    var covered = cb.filter(function(c) { return c.account !== 'uncovered'; });
+    var uncov = cb.find(function(c) { return c.account === 'uncovered'; });
+    var parts = covered.map(function(c) { return fmt(c.amount) + ' from <strong>' + c.account + '</strong>'; });
+    var alertHtml = parts.length > 0
+      ? 'Transfer ' + parts.join(', then ') + ' before ' + negDate
+      : 'Shortfall: ' + fmt(Math.abs(proj.lowestBalance));
+    if (uncov) alertHtml += ' - <strong style="color:var(--red)">' + fmt(uncov.amount) + ' uncovered</strong>';
+    projAlertEl.innerHTML = alertHtml;
+    projAlertEl.style.color = 'var(--yellow)';
+    projAlertEl.style.display = 'block';
   } else {
-    if (proj.goesNegativeOn) {
-      // Show the negative event prominently
-      const negDate = proj.goesNegativeOn.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      const shortfall = Math.abs(proj.lowestBalance);
-      projAmtEl.textContent = fmt(proj.lowestBalance);
-      projAmtEl.className = 'projection-amount bal-danger';
-      projNoteEl.textContent = `After ${proj.goesNegativeAfter} on ${negDate}`;
-      projAlertEl.innerHTML = `⚠ Transfer <strong>${fmt(shortfall)}</strong> from savings before ${negDate}`;
-      projAlertEl.style.color = 'var(--red)';
+    var lowDate = proj.lowestDate
+      ? proj.lowestDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : null;
+    projAmtEl.textContent = fmt(proj.lowestBalance);
+    projAmtEl.className = 'projection-amount ' + (proj.lowestBalance < 400 ? 'bal-warn' : 'bal-green');
+    projNoteEl.textContent = lowDate
+      ? 'Lowest after ' + proj.lowestLabel + ' on ' + lowDate
+      : 'Projection looks healthy';
+    if (proj.lowestBalance < 400) {
+      projAlertEl.innerHTML = 'Getting tight - consider keeping savings ready';
+      projAlertEl.style.color = 'var(--yellow)';
       projAlertEl.style.display = 'block';
     } else {
-      // Never goes negative - show lowest point as a warning if it's tight
-      const lowDate = proj.lowestDate
-        ? proj.lowestDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        : null;
-      projAmtEl.textContent = fmt(proj.lowestBalance);
-      projAmtEl.className = 'projection-amount ' + (proj.lowestBalance < 400 ? 'bal-warn' : 'bal-green');
-      projNoteEl.textContent = lowDate
-        ? `Lowest point after ${proj.lowestLabel} on ${lowDate}`
-        : 'Projection looks healthy';
-      if (proj.lowestBalance < 400) {
-        projAlertEl.innerHTML = `Getting tight - consider keeping savings ready`;
-        projAlertEl.style.color = 'var(--yellow)';
-        projAlertEl.style.display = 'block';
-      } else {
-        projAlertEl.style.display = 'none';
-      }
+      projAlertEl.style.display = 'none';
     }
   }
 
-  // CC cycle
-  const installTotal = finState.ccInstallments.reduce((s, i) => s + i.amount, 0);
-  const ccTotal = installTotal + (finState.ccAccrued || 0);
-  const now = new Date();
-  const dueMonth = now.getDate() > 5
-    ? new Date(now.getFullYear(), now.getMonth() + 1, 5)
-    : new Date(now.getFullYear(), now.getMonth(), 5);
+  checkCCCycle();
+  var now = new Date();
+  var installTotal = (finState.ccInstallments || []).reduce(function(s, i) { return s + i.amount; }, 0);
+  var ccOpenAcc = finState.ccOpenAccrued || 0;
+  var ccClosedAcc = finState.ccClosedAccrued || 0;
 
-  document.getElementById('cc-next-due').textContent =
-    dueMonth.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  document.getElementById('cc-installments-total').textContent =
-    finState.ccInstallments.length > 0 ? fmt(installTotal) : '-';
-  document.getElementById('cc-accrued').textContent = fmt(finState.ccAccrued || 0);
-  document.getElementById('cc-total-due').textContent = ccTotal > 0 ? fmt(ccTotal) : '-';
+  var closedCard = document.getElementById('cc-closed-card');
+  if (ccClosedAcc > 0) {
+    closedCard.style.display = 'block';
+    var expPortion = Math.max(0, ccClosedAcc - installTotal);
+    var dueMonth = now.getDate() > 5
+      ? new Date(now.getFullYear(), now.getMonth() + 1, 5)
+      : new Date(now.getFullYear(), now.getMonth(), 5);
+    var dueDateStr = dueMonth.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    document.getElementById('cc-closed-label').textContent = 'Closed cycle - due ' + dueDateStr;
+    document.getElementById('cc-closed-installments').textContent = fmt(installTotal);
+    document.getElementById('cc-closed-expenses').textContent = fmt(expPortion);
+    document.getElementById('cc-closed-total').textContent = fmt(ccClosedAcc);
+  } else {
+    closedCard.style.display = 'none';
+  }
 
-  // Budget bars
-  const barsEl = document.getElementById('budget-bars');
+  var cycleDay = now.getDate();
+  var daysLeft = cycleDay <= 28 ? 28 - cycleDay : 0;
+  document.getElementById('cc-open-label').textContent = daysLeft > 0
+    ? 'Open cycle - closes in ' + daysLeft + (daysLeft === 1 ? ' day' : ' days')
+    : 'Open cycle - closed today';
+  document.getElementById('cc-installments-total').textContent = installTotal > 0 ? fmt(installTotal) : '-';
+  document.getElementById('cc-accrued').textContent = fmt(ccOpenAcc);
+  var estNext = installTotal + ccOpenAcc;
+  document.getElementById('cc-total-due').textContent = estNext > 0 ? '~' + fmt(estNext) : '-';
+  var ccTotal = ccClosedAcc > 0 ? ccClosedAcc : estNext;
+
+  var barsEl = document.getElementById('budget-bars');
   barsEl.innerHTML = '';
-  for (const [cat, { spent, budget }] of Object.entries(finState.categories)) {
-    if (budget === 0 && spent === 0) continue;
-    const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
-    const over = budget > 0 && spent > budget;
-    const warn = pct >= 75 && !over;
-    const color = over ? 'var(--red)' : warn ? 'var(--yellow)' : 'var(--green)';
-    barsEl.innerHTML += `
-      <div class="budget-item">
-        <div class="budget-row">
-          <span class="budget-cat">${escHtml(cat)}</span>
-          <span class="budget-nums">${fmt(spent)}${budget > 0 ? ' / ' + fmt(budget) : ''}</span>
-        </div>
-        ${budget > 0 ? `<div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>` : ''}
-      </div>`;
-  }
+  var cats = finState.categories || {};
+  Object.keys(cats).forEach(function(cat) {
+    var spent = cats[cat].spent || 0;
+    var budget = cats[cat].budget || 0;
+    if (budget === 0 && spent === 0) return;
+    var pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+    var over = budget > 0 && spent > budget;
+    var warn = pct >= 75 && !over;
+    var color = over ? 'var(--red)' : warn ? 'var(--yellow)' : 'var(--green)';
+    barsEl.innerHTML += '<div class="budget-item"><div class="budget-row"><span class="budget-cat">' +
+      escHtml(cat) + '</span><span class="budget-nums">' + fmt(spent) +
+      (budget > 0 ? ' / ' + fmt(budget) : '') + '</span></div>' +
+      (budget > 0 ? '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + color + '"></div></div>' : '') +
+      '</div>';
+  });
 
-  // Upcoming bills — derived from projection event schedule, future only
-  const billsEl = document.getElementById('upcoming-bills');
+  var billsEl = document.getElementById('upcoming-bills');
   billsEl.innerHTML = '';
-  const fb = finState.fixedBills || {};
+  var fb2 = finState.fixedBills || {};
+  var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var upcomingEvents = [];
 
-  // Build the same event list the projection uses, but just for display
-  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  function relativeLabel(evDate) {
-    const diffMs   = evDate - todayMidnight;
-    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    return `In ${diffDays} days`;
-  }
-
-  // Collect upcoming events (same logic as projection, but for display only)
-  const upcomingEvents = [];
   function addUpcoming(y, m, d, label, amount, isIncome) {
-    const evDate = new Date(y, m, d);
-    if (evDate > todayMidnight) {
-      upcomingEvents.push({ date: evDate, label, amount, isIncome });
-    }
+    var evDate = new Date(y, m, d);
+    if (evDate > todayMid) upcomingEvents.push({ date: evDate, label: label, amount: amount, isIncome: isIncome });
   }
 
-  const curYear2  = todayMidnight.getFullYear();
-  const curMonth2 = todayMidnight.getMonth();
-
-  // This month remaining
-  addUpcoming(curYear2, curMonth2, 10,  'Condo',              fb.condo || 0,              false);
-  addUpcoming(curYear2, curMonth2, 13,  'Flooring',           fb.flooring || 0,           false);
-  addUpcoming(curYear2, curMonth2, 15,  '2nd Paycheck',       2000,                       true);
-  addUpcoming(curYear2, curMonth2, 19,  'Apt Financing',      fb.apartmentFinancing || 0, false);
-
-  // CC Payment: always use the NEXT due date (same logic as CC panel)
-  // If we're past the 5th this month, next CC due is the 5th of next month
-  // and that payment includes current ccAccrued + installments (ccTotal)
-  const ccDueMonth = todayMidnight.getDate() > 5 ? curMonth2 + 1 : curMonth2;
-  const ccDueYear  = ccDueMonth > 11 ? curYear2 + 1 : curYear2;
-  const ccDueMonthNorm = ccDueMonth % 12;
-  // If CC due is this month (we're before the 5th), use ccTotal (accrued + installments)
-  // If CC due is next month (we're after the 5th), still use ccTotal — accrued applies to next bill
-  addUpcoming(ccDueYear, ccDueMonthNorm, 5, 'CC Payment', ccTotal, false);
-
-  // Next two months (skipping the month that already has CC from above)
-  for (let offset = 1; offset <= 3; offset++) {
-    const absM = curMonth2 + offset;
-    const yr   = curYear2 + Math.floor(absM / 12);
-    const mo2  = absM % 12;
-
-    // Skip the month that already got the CC payment above
-    const isCCMonth = (yr === ccDueYear && mo2 === ccDueMonthNorm);
-
-    const nextInstallTotal = (finState.ccInstallments || [])
-      .filter(i => i.remainingMonths > offset)
-      .reduce((s, i) => s + i.amount, 0);
-
-    addUpcoming(yr, mo2,  1,  '1st Paycheck',    2000,                       true);
-    if (!isCCMonth) addUpcoming(yr, mo2, 5, 'CC Payment', nextInstallTotal,  false);
-    addUpcoming(yr, mo2, 10,  'Condo',            fb.condo || 0,              false);
-    addUpcoming(yr, mo2, 13,  'Flooring',         fb.flooring || 0,           false);
-    addUpcoming(yr, mo2, 15,  '2nd Paycheck',     2000,                       true);
-    addUpcoming(yr, mo2, 19,  'Apt Financing',    fb.apartmentFinancing || 0, false);
+  function relLabel(evDate) {
+    var diff = Math.round((evDate - todayMid) / 86400000);
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Tomorrow';
+    return 'In ' + diff + ' days';
   }
 
-  // Sort and take next 5, filter zero-amount bills
+  var cy2 = todayMid.getFullYear();
+  var cm2 = todayMid.getMonth();
+  var ccDueM = todayMid.getDate() > 5 ? cm2 + 1 : cm2;
+  var ccDueY = ccDueM > 11 ? cy2 + 1 : cy2;
+  var ccDueMN = ccDueM % 12;
+
+  addUpcoming(cy2, cm2, 10, 'Condo', fb2.condo || 0, false);
+  addUpcoming(cy2, cm2, 13, 'Flooring', fb2.flooring || 0, false);
+  addUpcoming(cy2, cm2, 15, '2nd Paycheck', 2000, true);
+  addUpcoming(cy2, cm2, 19, 'Apt Financing', fb2.apartmentFinancing || 0, false);
+  addUpcoming(ccDueY, ccDueMN, 5, 'CC Payment', ccTotal, false);
+
+  for (var off = 1; off <= 3; off++) {
+    var aM = cm2 + off;
+    var oY = cy2 + Math.floor(aM / 12);
+    var oM = aM % 12;
+    var isCCM = (oY === ccDueY && oM === ccDueMN);
+    var nIT = (finState.ccInstallments || [])
+      .filter(function(i) { return i.remainingMonths > off; })
+      .reduce(function(s, i) { return s + i.amount; }, 0);
+    addUpcoming(oY, oM, 1,  '1st Paycheck',   2000, true);
+    if (!isCCM) addUpcoming(oY, oM, 5, 'CC Payment', nIT, false);
+    addUpcoming(oY, oM, 10, 'Condo',           fb2.condo || 0, false);
+    addUpcoming(oY, oM, 13, 'Flooring',        fb2.flooring || 0, false);
+    addUpcoming(oY, oM, 15, '2nd Paycheck',    2000, true);
+    addUpcoming(oY, oM, 19, 'Apt Financing',   fb2.apartmentFinancing || 0, false);
+  }
+
   upcomingEvents
-    .filter(e => e.amount > 0)
-    .sort((a, b) => a.date - b.date)
+    .filter(function(e) { return e.amount > 0; })
+    .sort(function(a, b) { return a.date - b.date; })
     .slice(0, 5)
-    .forEach(e => {
-      const rel   = relativeLabel(e.date);
-      const color = e.isIncome ? 'var(--green)' : 'var(--red)';
-      const sign  = e.isIncome ? '+' : '';
-      billsEl.innerHTML += `
-        <div class="bill-item">
-          <div>
-            <div class="bill-name" style="color:${color}">${e.label}</div>
-            <div class="bill-date">${rel}</div>
-          </div>
-          <div class="bill-amount" style="color:${color}">${sign}${fmt(e.amount)}</div>
-        </div>`;
+    .forEach(function(e) {
+      var color = e.isIncome ? 'var(--green)' : 'var(--red)';
+      var sign = e.isIncome ? '+' : '';
+      billsEl.innerHTML += '<div class="bill-item"><div><div class="bill-name" style="color:' + color + '">' +
+        e.label + '</div><div class="bill-date">' + relLabel(e.date) + '</div></div>' +
+        '<div class="bill-amount" style="color:' + color + '">' + sign + fmt(e.amount) + '</div></div>';
     });
 
-  if (upcomingEvents.filter(e => e.amount > 0).length === 0) {
+  if (upcomingEvents.filter(function(e) { return e.amount > 0; }).length === 0) {
     billsEl.innerHTML = '<div style="font-size:11px;color:var(--muted)">Nothing scheduled.</div>';
   }
 
-  // Repositories
-  const repoListEl = document.getElementById('repo-list');
-  if (repoListEl) {
-    const repos = finState.repositories || [];
-    repoListEl.innerHTML = repos.length === 0
-      ? '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">No repositories yet.</div>'
-      : repos.map(rp => `
-        <div class="repo-card">
-          <div class="repo-info">
-            <div class="repo-name">${escHtml(rp.name)}</div>
-            <div class="repo-type">${escHtml(rp.type)}</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div class="repo-amount">${fmt(rp.balance)}</div>
-            <div class="repo-actions">
-              <button class="repo-btn" onclick="editRepo('${rp.id}')" title="Edit">✎</button>
-              <button class="repo-btn danger" onclick="deleteRepo('${rp.id}')" title="Delete">✕</button>
-            </div>
-          </div>
-        </div>`).join('');
-  }
+  var repoListEl = document.getElementById('repo-list');
+  var repos = finState.repositories || [];
+  repoListEl.innerHTML = repos.length === 0
+    ? '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">No repositories yet.</div>'
+    : repos.map(function(rp) {
+        return '<div class="repo-card"><div class="repo-info"><div class="repo-name">' + escHtml(rp.name) + '</div></div>' +
+          '<div style="display:flex;align-items:center;gap:8px"><div class="repo-amount">' + fmt(rp.balance) + '</div>' +
+          '<div class="repo-actions">' +
+          '<button class="repo-btn" onclick="editRepo(\'' + rp.id + '\')" title="Edit">&#x270e;</button>' +
+          '<button class="repo-btn danger" onclick="deleteRepo(\'' + rp.id + '\')" title="Delete">&#x2715;</button>' +
+          '</div></div></div>';
+      }).join('');
 
-  // Transfer Priority
-  const priorityListEl = document.getElementById('priority-list');
-  if (priorityListEl) {
-    const priority = finState.transferPriority || ['savings'];
-    const repos = finState.repositories || [];
-    // Build display items: savings is always available, repos only if they exist
-    const allAccounts = [
-      { id: 'savings', name: 'Savings' },
-      ...repos.map(r => ({ id: r.id, name: r.name }))
-    ];
-    // Show only accounts in priority list, plus any missing ones at bottom
-    const inPriority = priority.filter(id => id === 'savings' || repos.find(r => r.id === id));
-    const notInPriority = allAccounts.filter(a => !inPriority.includes(a.id));
-    const displayOrder = [...inPriority, ...notInPriority.map(a => a.id)];
+  var priorityListEl = document.getElementById('priority-list');
+  var priority = finState.transferPriority || ['savings'];
+  var allAccounts = [{ id: 'savings', name: 'Savings' }].concat(repos.map(function(rp) { return { id: rp.id, name: rp.name }; }));
+  var inPriority = priority.filter(function(id) { return id === 'savings' || repos.find(function(rp) { return rp.id === id; }); });
+  var notInPriority = allAccounts.filter(function(a) { return !inPriority.includes(a.id); });
+  var displayOrder = inPriority.concat(notInPriority.map(function(a) { return a.id; }));
 
-    priorityListEl.innerHTML = displayOrder.map((id, idx) => {
-      const acc = allAccounts.find(a => a.id === id);
-      if (!acc) return '';
-      const isActive = inPriority.includes(id);
-      return `<div class="priority-item" style="${!isActive ? 'opacity:0.4' : ''}">
-        <div class="priority-badge">${isActive ? idx + 1 : '-'}</div>
-        <div class="priority-name">${escHtml(acc.name)}</div>
-        <div class="priority-arrows">
-          <button class="priority-arrow" onclick="movePriority('${id}', -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
-          <button class="priority-arrow" onclick="movePriority('${id}', 1)" ${idx === displayOrder.length - 1 ? 'disabled' : ''}>▼</button>
-        </div>
-      </div>`;
-    }).join('');
-  }
+  priorityListEl.innerHTML = displayOrder.map(function(id, idx) {
+    var acc = allAccounts.find(function(a) { return a.id === id; });
+    if (!acc) return '';
+    var isActive = inPriority.includes(id);
+    return '<div class="priority-item" style="' + (!isActive ? 'opacity:.4' : '') + '">' +
+      '<div class="priority-badge">' + (isActive ? idx + 1 : '-') + '</div>' +
+      '<div class="priority-name">' + escHtml(acc.name) + '</div>' +
+      '<div class="priority-arrows">' +
+      '<button class="priority-arrow" onclick="movePriority(\'' + id + '\',-1)" ' + (idx === 0 ? 'disabled' : '') + '>&#x25b2;</button>' +
+      '<button class="priority-arrow" onclick="movePriority(\'' + id + '\',1)" ' + (idx === displayOrder.length - 1 ? 'disabled' : '') + '>&#x25bc;</button>' +
+      '</div></div>';
+  }).join('');
 }
 
-// ---
-// MONTH ROLLOVER
-// ---
 function rolloverMonth() {
-  const now = new Date();
-  const newMonth = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-  // Food card adjustment
-  const foodOverage = finState.foodCardBudget - finState.foodCardBalance;
-  const newFoodBudget = foodOverage > 0 ? Math.max(0, 800 - foodOverage) : 800;
-
-  // Carry installments forward, decrement remaining months
-  const carriedInstallments = (finState.ccInstallments || [])
-    .map(i => ({ ...i, remainingMonths: i.remainingMonths - 1 }))
-    .filter(i => i.remainingMonths > 0);
-
-  finState = {
-    ...freshState(),
+  var now = new Date();
+  var newMonth = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  var foodOverage = finState.foodCardBalance < 0 ? Math.abs(finState.foodCardBalance) : 0;
+  var newFoodBudget = foodOverage > 0 ? Math.max(0, 800 - foodOverage) : 800;
+  var carriedInsts = (finState.ccInstallments || [])
+    .map(function(i) { return Object.assign({}, i, { remainingMonths: i.remainingMonths - 1 }); })
+    .filter(function(i) { return i.remainingMonths > 0; });
+  var fresh = freshState();
+  finState = Object.assign(fresh, {
     month: newMonth,
     savingsBalance: finState.savingsBalance,
     checkingBalance: null,
     foodCardBalance: newFoodBudget,
     foodCardBudget: newFoodBudget,
-    ccInstallments: carriedInstallments,
-    ccAccrued: 0,
+    ccInstallments: carriedInsts,
+    ccOpenAccrued: finState.ccOpenAccrued || 0,
+    ccClosedAccrued: finState.ccClosedAccrued || 0,
+    ccCycleClosedMonth: finState.ccCycleClosedMonth || null,
     fixedBills: finState.fixedBills,
     repositories: finState.repositories || [],
     transferPriority: finState.transferPriority || ['savings'],
-    categories: {
-      ...freshState().categories,
-      Food: { spent: 0, budget: newFoodBudget }
-    }
-  };
-
+    categories: Object.assign(fresh.categories, { Food: { spent: 0, budget: newFoodBudget } })
+  });
   messages = [];
   saveData();
   closeModal('reset-modal');
   renderSidebar();
   document.getElementById('messages').innerHTML = '';
-
-  const foodNote = newFoodBudget < 800
-    ? `Food card loaded at ${fmt(newFoodBudget)} (reduced by ${fmt(800 - newFoodBudget)} for last month's overage).`
+  var foodNote = newFoodBudget < 800
+    ? 'Food card loaded at ' + fmt(newFoodBudget) + ' (reduced by ' + fmt(800 - newFoodBudget) + ' for last month overage).'
     : 'Food card back to the full $800.';
-  const instNote = carriedInstallments.length > 0
-    ? `${carriedInstallments.length} CC installment(s) carried forward.`
+  var instNote = carriedInsts.length > 0
+    ? carriedInsts.length + ' CC installment(s) carried forward.'
     : 'No active CC installments.';
-
-  addMessage('assistant', `New month, fresh slate! ${foodNote} ${instNote}\n\nTell me your checking balance when you're ready and I'll get the projection running.`);
+  addMessage('assistant', 'New month, fresh slate! ' + foodNote + ' ' + instNote + '\n\nTell me your checking balance when ready and the projection will kick in.');
 }
 
-// ---
-// MESSAGES
-// ---
 function addMessage(role, content) {
-  messages.push({ role, content });
+  messages.push({ role: role, content: content });
   renderMessage(role, content);
   saveData();
   scrollBottom();
 }
 
 function renderMessage(role, content) {
-  const el = document.createElement('div');
-  el.className = `msg ${role}`;
-  // Assistant messages get markdown rendering; user messages get plain escaping
+  var el = document.createElement('div');
+  el.className = 'msg ' + role;
   if (role === 'assistant') {
-    el.innerHTML = `<div class="msg-avatar">✦</div><div class="msg-bubble" style="white-space:normal">${renderMarkdown(content)}</div>`;
+    el.innerHTML = '<div class="msg-avatar">&#x2726;</div><div class="msg-bubble" style="white-space:normal">' + renderMarkdown(content) + '</div>';
   } else {
-    el.innerHTML = `<div class="msg-bubble">${escHtml(content)}</div>`;
+    el.innerHTML = '<div class="msg-bubble">' + escHtml(content) + '</div>';
   }
   document.getElementById('messages').appendChild(el);
 }
 
 function renderMessages() {
   document.getElementById('messages').innerHTML = '';
-  messages.forEach(m => renderMessage(m.role, m.content));
+  messages.forEach(function(m) { renderMessage(m.role, m.content); });
   scrollBottom();
 }
 
 function showTyping() {
-  const el = document.createElement('div');
-  el.className = 'msg assistant'; el.id = 'typing-indicator';
-  el.innerHTML = `<div class="msg-avatar">✦</div><div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  var el = document.createElement('div');
+  el.className = 'msg assistant';
+  el.id = 'typing-indicator';
+  el.innerHTML = '<div class="msg-avatar">&#x2726;</div><div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
   document.getElementById('messages').appendChild(el);
   scrollBottom();
 }
 
 function hideTyping() {
-  const el = document.getElementById('typing-indicator');
+  var el = document.getElementById('typing-indicator');
   if (el) el.remove();
 }
 
 function scrollBottom() {
-  const el = document.getElementById('messages');
+  var el = document.getElementById('messages');
   el.scrollTop = el.scrollHeight;
 }
 
-// ---
-// SEND MESSAGE
-// ---
-async function sendMessage() {
-  const input = document.getElementById('user-input');
-  const text = input.value.trim();
-  if (!text || document.getElementById('send-btn').disabled) return;
-
-  input.value = '';
-  input.style.height = 'auto';
-  document.getElementById('send-btn').disabled = true;
-
-  addMessage('user', text);
-  showTyping();
-
-  // Inject a compact state context into the latest user turn only
-  // Keep it minimal - AI only needs balances and installments, not full expense log
-  const ctx = {
-    month: finState.month,
-    checkingBalance: finState.checkingBalance,
-    savingsBalance: finState.savingsBalance,
-    foodCardBalance: finState.foodCardBalance,
-    foodCardBudget: finState.foodCardBudget,
-    ccInstallments: finState.ccInstallments,
-    ccAccrued: finState.ccAccrued,
-    categories: finState.categories,
-    fixedBills: finState.fixedBills
-  };
-  const apiMessages = messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
-  apiMessages.push({
-    role: 'user',
-    content: `${text}\n\n[CURRENT STATE: ${JSON.stringify(ctx)}]`
-  });
-
-  const reply = await callAPI(apiMessages);
-
-  renderSidebar();
-  hideTyping();
-  addMessage('assistant', reply);
-  document.getElementById('send-btn').disabled = false;
-  document.getElementById('user-input').focus();
-}
-
-// ---
-// ACTION APPLIER - all math lives here, not in AI
-// ---
-// Apply a single action object to finState
 function applyAction(action) {
   if (!action || action.type === 'none') return;
-
-  const r = (n) => Math.round(n * 100) / 100;
-
   switch (action.type) {
-
     case 'expense': {
-      const amt = Number(action.amount) || 0;
-      const cat = action.category || 'Other';
-      const acc = action.account || 'checking';
-
+      var amt = Number(action.amount) || 0;
+      var cat = action.category || 'Other';
+      var acc = action.account || 'checking';
       if (acc === 'foodCard') {
         finState.foodCardBalance = r(finState.foodCardBalance - amt);
       } else {
-        if (finState.checkingBalance !== null)
-          finState.checkingBalance = r(finState.checkingBalance - amt);
-        if (acc === 'cc')
-          finState.ccAccrued = r((finState.ccAccrued || 0) + amt);
+        if (finState.checkingBalance !== null) finState.checkingBalance = r(finState.checkingBalance - amt);
+        if (acc === 'cc') {
+          checkCCCycle();
+          finState.ccOpenAccrued = r((finState.ccOpenAccrued || 0) + amt);
+        }
       }
-
-      if (!finState.categories[cat])
-        finState.categories[cat] = { spent: 0, budget: 0 };
+      if (!finState.categories[cat]) finState.categories[cat] = { spent: 0, budget: 0 };
       finState.categories[cat].spent = r(finState.categories[cat].spent + amt);
-
-      finState.monthlyExpenses.push({
-        name: action.name || cat,
-        amount: amt,
-        category: cat,
-        account: acc,
-        date: new Date().toISOString().slice(0, 10)
-      });
+      finState.monthlyExpenses.push({ name: action.name || cat, amount: amt, category: cat, account: acc, date: new Date().toISOString().slice(0, 10) });
       break;
     }
-
     case 'income': {
-      const amt = Number(action.amount) || 0;
-      if (action.account === 'savings') {
-        finState.savingsBalance = r((finState.savingsBalance || 0) + amt);
-      } else {
-        finState.checkingBalance = r((finState.checkingBalance || 0) + amt);
-      }
+      var amt2 = Number(action.amount) || 0;
+      if (action.account === 'savings') finState.savingsBalance = r((finState.savingsBalance || 0) + amt2);
+      else finState.checkingBalance = r((finState.checkingBalance || 0) + amt2);
       break;
     }
-
     case 'set_balance': {
-      const val = Number(action.value);
-      if (action.account === 'checking')  finState.checkingBalance = r(val);
-      if (action.account === 'savings')   finState.savingsBalance  = r(val);
-      if (action.account === 'foodCard')  finState.foodCardBalance = r(val);
+      var val = Number(action.value);
+      if (action.account === 'checking') finState.checkingBalance = r(val);
+      if (action.account === 'savings')  finState.savingsBalance  = r(val);
+      if (action.account === 'foodCard') finState.foodCardBalance = r(val);
       break;
     }
-
     case 'add_installment': {
-      const idx = finState.ccInstallments.findIndex(i =>
-        i.name.toLowerCase() === (action.name || '').toLowerCase());
-      const entry = { name: action.name, amount: Number(action.amount), remainingMonths: Number(action.remainingMonths) };
-      if (idx >= 0) finState.ccInstallments[idx] = entry;
-      else finState.ccInstallments.push(entry);
+      var idx = finState.ccInstallments.findIndex(function(i) { return i.name.toLowerCase() === (action.name || '').toLowerCase(); });
+      var entry = { name: action.name, amount: Number(action.amount), remainingMonths: Number(action.remainingMonths) };
+      if (idx >= 0) finState.ccInstallments[idx] = entry; else finState.ccInstallments.push(entry);
       break;
     }
-
     case 'remove_installment': {
-      finState.ccInstallments = finState.ccInstallments.filter(i =>
-        i.name.toLowerCase() !== (action.name || '').toLowerCase());
+      finState.ccInstallments = finState.ccInstallments.filter(function(i) { return i.name.toLowerCase() !== (action.name || '').toLowerCase(); });
       break;
     }
-
     case 'update_bill': {
       if (!finState.fixedBills) finState.fixedBills = {};
       finState.fixedBills[action.bill] = Number(action.amount);
       break;
     }
-
     case 'set_food_budget': {
       finState.foodCardBudget = Number(action.amount);
       if (!finState.categories.Food) finState.categories.Food = { spent: 0, budget: 0 };
       finState.categories.Food.budget = Number(action.amount);
       break;
     }
-
     case 'set_category': {
-      const cat = action.category || 'Other';
-      if (!finState.categories[cat]) finState.categories[cat] = { spent: 0, budget: 0 };
-      if (action.spent  !== undefined) finState.categories[cat].spent  = r(Number(action.spent));
-      if (action.budget !== undefined) finState.categories[cat].budget = r(Number(action.budget));
+      var cat2 = action.category || 'Other';
+      if (!finState.categories[cat2]) finState.categories[cat2] = { spent: 0, budget: 0 };
+      if (action.spent  !== undefined) finState.categories[cat2].spent  = r(Number(action.spent));
+      if (action.budget !== undefined) finState.categories[cat2].budget = r(Number(action.budget));
       break;
     }
-
     case 'set_repository_balance': {
-      const repo = (finState.repositories || []).find(rp =>
-        rp.name.toLowerCase() === (action.name || '').toLowerCase());
+      var repo = (finState.repositories || []).find(function(rp) { return rp.name.toLowerCase() === (action.name || '').toLowerCase(); });
       if (repo) repo.balance = r(Number(action.value));
+      break;
+    }
+    case 'pay_cc_bill': {
+      var due = finState.ccClosedAccrued || 0;
+      if (due > 0) {
+        if (finState.checkingBalance !== null) finState.checkingBalance = r(finState.checkingBalance - due);
+        finState.ccClosedAccrued = 0;
+      }
       break;
     }
   }
 }
 
-// Apply an array of actions, then save once
 function applyActions(actions) {
   if (!Array.isArray(actions)) return;
   actions.forEach(applyAction);
   saveData();
 }
 
-// ---
-// API CALL - parse action, apply in JS, retry on bad JSON
-// ---
 async function fetchFromAPI(apiMessages, system) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  var res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -1164,11 +945,11 @@ async function fetchFromAPI(apiMessages, system) {
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true'
     },
-    body: JSON.stringify({ model: MODEL, max_tokens: 1024, system, messages: apiMessages })
+    body: JSON.stringify({ model: MODEL, max_tokens: 1024, system: system, messages: apiMessages })
   });
-  const data = await res.json();
+  var data = await res.json();
   if (data.error) throw new Error(data.error.message);
-  return (data.content || []).map(b => b.text || '').join('').trim();
+  return (data.content || []).map(function(b) { return b.text || ''; }).join('').trim();
 }
 
 function stripFences(raw) {
@@ -1177,38 +958,62 @@ function stripFences(raw) {
 
 async function callAPI(apiMessages) {
   try {
-    const raw = await fetchFromAPI(apiMessages, SYSTEM_PROMPT);
-    let parsed;
-
+    var raw = await fetchFromAPI(apiMessages, SYSTEM_PROMPT);
+    var parsed;
     try {
       parsed = JSON.parse(stripFences(raw));
     } catch(e) {
-      // Silent repair pass - send broken output to a minimal repair prompt
-      const repairRaw = await fetchFromAPI(
-        [{ role: 'user', content: 'Fix this into valid JSON with "reply" (string) and "actions" (array of action objects, or []) fields. Return ONLY the JSON object, nothing else:\n\n' + raw }],
+      var repairRaw = await fetchFromAPI(
+        [{ role: 'user', content: 'Fix this into valid JSON with "reply" (string) and "actions" (array) fields. Return ONLY the JSON object:\n\n' + raw }],
         'You are a JSON repair assistant. Return ONLY a valid JSON object. No markdown, no explanation.'
       );
       try {
         parsed = JSON.parse(stripFences(repairRaw));
       } catch(e2) {
-        return '⚠️ Something went wrong. Try again in a moment.';
+        return 'Something went wrong. Try again in a moment.';
       }
     }
-
-    // Apply all actions - this is where state actually changes
     if (Array.isArray(parsed.actions)) applyActions(parsed.actions);
-    else if (parsed.action) applyAction(parsed.action); // backwards compat
-
+    else if (parsed.action) applyAction(parsed.action);
     return parsed.reply || '(no reply)';
-
   } catch(e) {
-    return `⚠️ Connection error: ${e.message}`;
+    return 'Connection error: ' + e.message;
   }
 }
 
-// ---
-// HELPERS
-// ---
+async function sendMessage() {
+  var input = document.getElementById('user-input');
+  var text = input.value.trim();
+  if (!text || document.getElementById('send-btn').disabled) return;
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('send-btn').disabled = true;
+  addMessage('user', text);
+  showTyping();
+  var ctx = {
+    month: finState.month,
+    checkingBalance: finState.checkingBalance,
+    savingsBalance: finState.savingsBalance,
+    foodCardBalance: finState.foodCardBalance,
+    foodCardBudget: finState.foodCardBudget,
+    ccInstallments: finState.ccInstallments,
+    ccOpenAccrued: finState.ccOpenAccrued,
+    ccClosedAccrued: finState.ccClosedAccrued,
+    categories: finState.categories,
+    fixedBills: finState.fixedBills,
+    repositories: finState.repositories,
+    transferPriority: finState.transferPriority
+  };
+  var apiMessages = messages.slice(0, -1).map(function(m) { return { role: m.role, content: m.content }; });
+  apiMessages.push({ role: 'user', content: text + '\n\n[CURRENT STATE: ' + JSON.stringify(ctx) + ']' });
+  var reply = await callAPI(apiMessages);
+  renderSidebar();
+  hideTyping();
+  addMessage('assistant', reply);
+  document.getElementById('send-btn').disabled = false;
+  document.getElementById('user-input').focus();
+}
+
 function handleKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 }
@@ -1224,194 +1029,142 @@ function fmt(val) {
 }
 
 function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
 
-// Lightweight markdown renderer - bold, italic, inline code only
 function renderMarkdown(str) {
-  // Escape HTML first, then convert markdown patterns
-  let s = escHtml(str);
-  // Bold: **text** or __text__
+  var s = escHtml(str);
   s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   s = s.replace(/__(.+?)__/g, '<strong>$1</strong>');
-  // Italic: *text* or _text_ (single, not double)
   s = s.replace(/\*(?!\*)(.+?)(?<!\*)\*/g, '<em>$1</em>');
-  s = s.replace(/_(?!_)(.+?)(?<!_)_/g, '<em>$1</em>');
-  // Inline code: `code`
-  s = s.replace(/`([^`]+)`/g, '<code style="background:var(--surface);padding:1px 5px;border-radius:4px;font-size:12px;">$1</code>');
-  // Newlines - <br>
+  s = s.replace(/`([^`]+)`/g, '<code style="background:var(--surface2);padding:1px 5px;border-radius:4px;font-size:12px">$1</code>');
   s = s.replace(/\n/g, '<br>');
   return s;
 }
 
-// ---
-// REPOSITORY MANAGEMENT
-// ---
-let editingRepoId = null;
-
-function openModal_repo(id) {
+function openRepoModal() {
   editingRepoId = null;
   document.getElementById('repo-modal-title').textContent = 'Add Repository';
   document.getElementById('repo-name-input').value = '';
-  document.getElementById('repo-type-input').value = 'savings';
   document.getElementById('repo-balance-input').value = '';
   document.getElementById('repo-error').style.display = 'none';
   openModal('repo-modal');
 }
 
 function editRepo(id) {
-  const repo = (finState.repositories || []).find(r => r.id === id);
+  var repo = (finState.repositories || []).find(function(rp) { return rp.id === id; });
   if (!repo) return;
   editingRepoId = id;
   document.getElementById('repo-modal-title').textContent = 'Edit Repository';
   document.getElementById('repo-name-input').value = repo.name;
-  document.getElementById('repo-type-input').value = repo.type;
   document.getElementById('repo-balance-input').value = repo.balance;
   document.getElementById('repo-error').style.display = 'none';
   openModal('repo-modal');
 }
 
 function saveRepo() {
-  const name    = document.getElementById('repo-name-input').value.trim();
-  const type    = document.getElementById('repo-type-input').value;
-  const balance = parseFloat(document.getElementById('repo-balance-input').value);
-  const errEl   = document.getElementById('repo-error');
-
+  var name = document.getElementById('repo-name-input').value.trim();
+  var balance = parseFloat(document.getElementById('repo-balance-input').value);
+  var errEl = document.getElementById('repo-error');
   if (!name) { errEl.textContent = 'Name is required.'; errEl.style.display = 'block'; return; }
   if (isNaN(balance) || balance < 0) { errEl.textContent = 'Enter a valid balance.'; errEl.style.display = 'block'; return; }
-
   if (!finState.repositories) finState.repositories = [];
   if (!finState.transferPriority) finState.transferPriority = ['savings'];
-
   if (editingRepoId) {
-    // Update existing
-    const repo = finState.repositories.find(r => r.id === editingRepoId);
-    if (repo) { repo.name = name; repo.type = type; repo.balance = Math.round(balance * 100) / 100; }
+    var repo = finState.repositories.find(function(rp) { return rp.id === editingRepoId; });
+    if (repo) { repo.name = name; repo.balance = r(balance); }
   } else {
-    // Create new with unique id
-    const id = 'repo_' + Date.now();
-    finState.repositories.push({ id, name, type, balance: Math.round(balance * 100) / 100 });
-    // Add to end of transfer priority
+    var id = 'repo_' + Date.now();
+    finState.repositories.push({ id: id, name: name, balance: r(balance) });
     finState.transferPriority.push(id);
   }
-
   saveData();
   closeModal('repo-modal');
   renderSidebar();
 }
 
 function deleteRepo(id) {
-  finState.repositories = (finState.repositories || []).filter(r => r.id !== id);
-  finState.transferPriority = (finState.transferPriority || []).filter(p => p !== id);
+  finState.repositories = (finState.repositories || []).filter(function(rp) { return rp.id !== id; });
+  finState.transferPriority = (finState.transferPriority || []).filter(function(p) { return p !== id; });
   saveData();
   renderSidebar();
 }
 
 function movePriority(id, direction) {
-  const priority = finState.transferPriority || [];
-  const idx = priority.indexOf(id);
+  var priority = finState.transferPriority || [];
+  var idx = priority.indexOf(id);
   if (idx === -1) {
-    // Not in priority yet — add it
-    finState.transferPriority = [...priority, id];
+    finState.transferPriority = priority.concat([id]);
   } else {
-    const newIdx = idx + direction;
+    var newIdx = idx + direction;
     if (newIdx < 0 || newIdx >= priority.length) return;
-    const updated = [...priority];
-    [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
+    var updated = priority.slice();
+    var tmp = updated[idx]; updated[idx] = updated[newIdx]; updated[newIdx] = tmp;
     finState.transferPriority = updated;
   }
   saveData();
   renderSidebar();
 }
 
-// ---
-// EXPORT / IMPORT
-// ---
 function exportState() {
-  const snapshot = {
-    _version: '2.5',
-    _exported: new Date().toISOString(),
-    ...finState
-  };
-  const json = JSON.stringify(snapshot, null, 2);
-  navigator.clipboard.writeText(json).then(() => {
-    const toast = document.getElementById('export-toast');
+  var snapshot = Object.assign({ _version: '2.7', _exported: new Date().toISOString() }, finState);
+  var json = JSON.stringify(snapshot, null, 2);
+  navigator.clipboard.writeText(json).then(function() {
+    var toast = document.getElementById('export-toast');
     toast.style.opacity = '1';
     toast.style.transform = 'translateX(-50%) translateY(0)';
-    setTimeout(() => {
+    setTimeout(function() {
       toast.style.opacity = '0';
       toast.style.transform = 'translateX(-50%) translateY(20px)';
     }, 2200);
-  }).catch(() => {
-    // Fallback: show in a prompt so user can copy manually
+  }).catch(function() {
     window.prompt('Copy your backup JSON:', json);
   });
 }
 
 function importState() {
-  const raw = document.getElementById('import-input').value.trim();
-  const errEl = document.getElementById('import-error');
+  var raw = document.getElementById('import-input').value.trim();
+  var errEl = document.getElementById('import-error');
   errEl.style.display = 'none';
-
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch(e) {
+  var parsed;
+  try { parsed = JSON.parse(raw); } catch(e) {
     errEl.textContent = 'Invalid JSON - check your paste and try again.';
     errEl.style.display = 'block';
     return;
   }
-
-  // Strip meta fields before applying
-  const { _version, _exported, ...restored } = parsed;
-
-  // Validate bare minimum fields exist
+  var _version = parsed._version;
+  var _exported = parsed._exported;
+  var restored = Object.assign({}, parsed);
+  delete restored._version;
+  delete restored._exported;
   if (restored.month === undefined || restored.categories === undefined) {
-    errEl.textContent = "This doesn't look like a valid Finance Companion backup.";
+    errEl.textContent = 'This does not look like a valid Finance Companion backup.';
     errEl.style.display = 'block';
     return;
   }
-
-  // Apply - merge with freshState to fill any missing fields from older versions
-  finState = { ...freshState(), ...restored };
+  finState = Object.assign(freshState(), restored);
   messages = [];
   saveData();
   closeModal('import-modal');
   document.getElementById('import-input').value = '';
   renderSidebar();
   renderMessages();
-
-  // Build confirmation summary from the restored data
-  const instTotal = (finState.ccInstallments || []).reduce((s,i) => s + i.amount, 0);
-  const catSummary = Object.entries(finState.categories)
-    .filter(([,v]) => v.spent > 0)
-    .map(([k,v]) => `${k}: ${fmt(v.spent)}`)
+  var instTotal = (finState.ccInstallments || []).reduce(function(s,i) { return s + i.amount; }, 0);
+  var catSummary = Object.keys(finState.categories)
+    .filter(function(k) { return (finState.categories[k].spent || 0) > 0; })
+    .map(function(k) { return k + ': ' + fmt(finState.categories[k].spent); })
     .join(', ') || 'none';
-
   addMessage('assistant',
-    `Backup restored for **${finState.month}**.
-
-` +
-    `**Checking:** ${finState.checkingBalance !== null ? fmt(finState.checkingBalance) : '-'}  | ` +
-    `**Savings:** ${finState.savingsBalance !== null ? fmt(finState.savingsBalance) : '-'}  | ` +
-    `**Food card:** ${fmt(finState.foodCardBalance)} / ${fmt(finState.foodCardBudget)}
-
-` +
-    `**CC installments:** ${finState.ccInstallments.length > 0 ? fmt(instTotal) + '/mo across ' + finState.ccInstallments.length + ' installment(s)' : 'none'}
-
-` +
-    `**Spending this month:** ${catSummary}
-
-` +
-    `Everything looks good - pick up right where you left off.`
+    'Backup restored for **' + finState.month + '**.\n\n' +
+    '**Checking:** ' + (finState.checkingBalance !== null ? fmt(finState.checkingBalance) : '-') + ' | ' +
+    '**Savings:** ' + (finState.savingsBalance !== null ? fmt(finState.savingsBalance) : '-') + ' | ' +
+    '**Food card:** ' + fmt(finState.foodCardBalance) + ' / ' + fmt(finState.foodCardBudget) + '\n\n' +
+    '**CC installments:** ' + (finState.ccInstallments.length > 0 ? fmt(instTotal) + '/mo across ' + finState.ccInstallments.length + ' installment(s)' : 'none') + '\n\n' +
+    '**Spending this month:** ' + catSummary + '\n\n' +
+    'All good - pick up right where you left off.'
   );
 }
 
-// ---
-// GO
-// ---
 init();
 </script>
 </body>
