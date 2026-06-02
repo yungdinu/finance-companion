@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2.8">
+<meta name="app-version" content="2.9">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Finance Companion</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Epilogue:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -181,13 +181,13 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);height:100vh;o
       </div>
 
       <div class="section-label">CC Billing Cycle</div>
-      <div class="cc-cycle-card" id="cc-closed-card" style="display:none">
-        <div class="cc-cycle-title" id="cc-closed-label">Closed cycle</div>
-        <div class="cc-cycle-row"><span class="cc-cycle-label">Installments</span><span class="cc-cycle-val" id="cc-closed-installments">-</span></div>
-        <div class="cc-cycle-row"><span class="cc-cycle-label">Accrued expenses</span><span class="cc-cycle-val" id="cc-closed-expenses">-</span></div>
-        <div class="cc-cycle-row" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--border)">
-          <span class="cc-cycle-label" style="font-weight:600;color:var(--text)">Total due</span>
-          <span class="cc-cycle-val" id="cc-closed-total" style="color:var(--red)">-</span>
+      <div id="cc-closed-card" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 13px;margin-bottom:6px;display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div class="cc-cycle-title" id="cc-closed-label">Closed cycle</div>
+            <div style="font-size:9px;color:var(--muted);margin-top:1px" id="cc-closed-sublabel"></div>
+          </div>
+          <div class="cc-cycle-val" id="cc-closed-total" style="color:var(--red);font-size:16px">-</div>
         </div>
       </div>
       <div class="cc-cycle-card">
@@ -195,8 +195,8 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);height:100vh;o
         <div class="cc-cycle-row"><span class="cc-cycle-label">Installments</span><span class="cc-cycle-val" id="cc-installments-total">-</span></div>
         <div class="cc-cycle-row"><span class="cc-cycle-label">Accrued so far</span><span class="cc-cycle-val" id="cc-accrued">$0.00</span></div>
         <div class="cc-cycle-row" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--border)">
-          <span class="cc-cycle-label" style="color:var(--muted)">Est. next bill</span>
-          <span class="cc-cycle-val" id="cc-total-due" style="color:var(--muted)">-</span>
+          <span class="cc-cycle-label" style="color:var(--yellow)">Est. next bill</span>
+          <span class="cc-cycle-val" id="cc-total-due" style="color:var(--yellow)">-</span>
         </div>
       </div>
 
@@ -220,7 +220,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);height:100vh;o
         <button class="settings-btn" onclick="exportState()" style="flex:1;justify-content:center;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 4px;font-size:10px">&#x2191; Export</button>
         <button class="settings-btn" onclick="openModal('import-modal')" style="flex:1;justify-content:center;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 4px;font-size:10px">&#x2193; Import</button>
       </div>
-      <div style="margin-top:8px;font-size:9px;color:#2a2a3e;letter-spacing:.06em">v2.7 - CC Billing Cycle Tracking</div>
+      <div style="margin-top:8px;font-size:9px;color:#2a2a3e;letter-spacing:.06em">v2.9</div>
     </div>
   </div>
 
@@ -637,17 +637,16 @@ function renderSidebar() {
   if (ccClosedAcc > 0) {
     // Normal: we have the closed bill value
     closedCard.style.display = 'block';
-    var expPortion = Math.max(0, ccClosedAcc - installTotal);
     var dueMonth = now.getDate() > 5
       ? new Date(now.getFullYear(), now.getMonth() + 1, 5)
       : new Date(now.getFullYear(), now.getMonth(), 5);
     var dueDateStr = dueMonth.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     var billMonth = new Date(dueMonth.getFullYear(), dueMonth.getMonth() - 1, 1);
     var billMonthStr = billMonth.toLocaleDateString('en-US', { month: 'long' });
-    document.getElementById('cc-closed-label').textContent = billMonthStr + ' closed bill - due ' + dueDateStr;
-    document.getElementById('cc-closed-installments').textContent = fmt(installTotal);
-    document.getElementById('cc-closed-expenses').textContent = fmt(expPortion);
+    document.getElementById('cc-closed-label').textContent = billMonthStr + ' closed bill';
+    document.getElementById('cc-closed-sublabel').textContent = 'due ' + dueDateStr;
     document.getElementById('cc-closed-total').textContent = fmt(ccClosedAcc);
+    document.getElementById('cc-closed-total').style.color = 'var(--red)';
   } else if (inDueWindow) {
     // Pending: a bill must exist (we're in the 28th-5th window) but value is unknown
     closedCard.style.display = 'block';
@@ -657,9 +656,8 @@ function renderSidebar() {
     var dueDateStr2 = dueMonth2.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     var billMonth2 = new Date(dueMonth2.getFullYear(), dueMonth2.getMonth() - 1, 1);
     var billMonthStr2 = billMonth2.toLocaleDateString('en-US', { month: 'long' });
-    document.getElementById('cc-closed-label').textContent = billMonthStr2 + ' closed bill - due ' + dueDateStr2;
-    document.getElementById('cc-closed-installments').textContent = 'unknown';
-    document.getElementById('cc-closed-expenses').textContent = 'unknown';
+    document.getElementById('cc-closed-label').textContent = billMonthStr2 + ' closed bill';
+    document.getElementById('cc-closed-sublabel').textContent = 'due ' + dueDateStr2 + ' - amount unknown';
     document.getElementById('cc-closed-total').textContent = 'pending';
     document.getElementById('cc-closed-total').style.color = 'var(--yellow)';
   } else {
