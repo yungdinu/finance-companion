@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2.7">
+<meta name="app-version" content="2.8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Finance Companion</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Epilogue:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -368,6 +368,7 @@ set_food_budget: {"type":"set_food_budget","amount":number}
 set_category: {"type":"set_category","category":"string","spent":number,"budget":number}
 set_repository_balance: {"type":"set_repository_balance","name":"string","value":number}
 pay_cc_bill: {"type":"pay_cc_bill"} - deducts ccClosedAccrued from checking and zeros it. If ccClosedAccrued is 0, warn user instead.
+set_cc_closed: {"type":"set_cc_closed","value":number} - sets the closed cycle bill total directly. Use when user tells you last month's closed CC bill amount (e.g. the app started mid-cycle and missed the close).
 
 Example: {"reply":"Got it - $38 on lunch from the food card.","actions":[{"type":"expense","amount":38,"category":"Food","account":"foodCard","name":"Lunch"}]}
 
@@ -631,20 +632,41 @@ function renderSidebar() {
   var ccClosedAcc = finState.ccClosedAccrued || 0;
 
   var closedCard = document.getElementById('cc-closed-card');
+  var ccDay = now.getDate();
+  var inDueWindow = ccDay >= 28 || ccDay <= 5;
   if (ccClosedAcc > 0) {
+    // Normal: we have the closed bill value
     closedCard.style.display = 'block';
     var expPortion = Math.max(0, ccClosedAcc - installTotal);
     var dueMonth = now.getDate() > 5
       ? new Date(now.getFullYear(), now.getMonth() + 1, 5)
       : new Date(now.getFullYear(), now.getMonth(), 5);
     var dueDateStr = dueMonth.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    document.getElementById('cc-closed-label').textContent = 'Closed cycle - due ' + dueDateStr;
+    var billMonth = new Date(dueMonth.getFullYear(), dueMonth.getMonth() - 1, 1);
+    var billMonthStr = billMonth.toLocaleDateString('en-US', { month: 'long' });
+    document.getElementById('cc-closed-label').textContent = billMonthStr + ' closed bill - due ' + dueDateStr;
     document.getElementById('cc-closed-installments').textContent = fmt(installTotal);
     document.getElementById('cc-closed-expenses').textContent = fmt(expPortion);
     document.getElementById('cc-closed-total').textContent = fmt(ccClosedAcc);
+  } else if (inDueWindow) {
+    // Pending: a bill must exist (we're in the 28th-5th window) but value is unknown
+    closedCard.style.display = 'block';
+    var dueMonth2 = now.getDate() > 5
+      ? new Date(now.getFullYear(), now.getMonth() + 1, 5)
+      : new Date(now.getFullYear(), now.getMonth(), 5);
+    var dueDateStr2 = dueMonth2.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    var billMonth2 = new Date(dueMonth2.getFullYear(), dueMonth2.getMonth() - 1, 1);
+    var billMonthStr2 = billMonth2.toLocaleDateString('en-US', { month: 'long' });
+    document.getElementById('cc-closed-label').textContent = billMonthStr2 + ' closed bill - due ' + dueDateStr2;
+    document.getElementById('cc-closed-installments').textContent = 'unknown';
+    document.getElementById('cc-closed-expenses').textContent = 'unknown';
+    document.getElementById('cc-closed-total').textContent = 'pending';
+    document.getElementById('cc-closed-total').style.color = 'var(--yellow)';
   } else {
     closedCard.style.display = 'none';
   }
+  // Reset total color when not pending
+  if (ccClosedAcc > 0) document.getElementById('cc-closed-total').style.color = 'var(--red)';
 
   var cycleDay = now.getDate();
   var daysLeft = cycleDay <= 28 ? 28 - cycleDay : 0;
@@ -656,6 +678,7 @@ function renderSidebar() {
   var estNext = installTotal + ccOpenAcc;
   document.getElementById('cc-total-due').textContent = estNext > 0 ? '~' + fmt(estNext) : '-';
   var ccTotal = ccClosedAcc > 0 ? ccClosedAcc : estNext;
+  var ccPending = ccClosedAcc === 0 && (now.getDate() >= 28 || now.getDate() <= 5);
 
   var barsEl = document.getElementById('budget-bars');
   barsEl.innerHTML = '';
@@ -703,7 +726,13 @@ function renderSidebar() {
   addUpcoming(cy2, cm2, 13, 'Flooring', fb2.flooring || 0, false);
   addUpcoming(cy2, cm2, 15, '2nd Paycheck', 2000, true);
   addUpcoming(cy2, cm2, 19, 'Apt Financing', fb2.apartmentFinancing || 0, false);
-  addUpcoming(ccDueY, ccDueMN, 5, 'CC Payment', ccTotal, false);
+  // CC payment: if pending (closed bill exists but value unknown), show as pending
+  if (ccPending) {
+    var ccEvDate = new Date(ccDueY, ccDueMN, 5);
+    if (ccEvDate > todayMid) upcomingEvents.push({ date: ccEvDate, label: 'CC Payment', amount: 0, isIncome: false, pending: true });
+  } else {
+    addUpcoming(ccDueY, ccDueMN, 5, 'CC Payment', ccTotal, false);
+  }
 
   for (var off = 1; off <= 3; off++) {
     var aM = cm2 + off;
@@ -721,19 +750,26 @@ function renderSidebar() {
     addUpcoming(oY, oM, 19, 'Apt Financing',   fb2.apartmentFinancing || 0, false);
   }
 
-  upcomingEvents
-    .filter(function(e) { return e.amount > 0; })
+  var visibleEvents = upcomingEvents
+    .filter(function(e) { return e.amount > 0 || e.pending; })
     .sort(function(a, b) { return a.date - b.date; })
-    .slice(0, 5)
-    .forEach(function(e) {
+    .slice(0, 5);
+
+  visibleEvents.forEach(function(e) {
+    if (e.pending) {
+      billsEl.innerHTML += '<div class="bill-item"><div><div class="bill-name" style="color:var(--yellow)">' +
+        e.label + '</div><div class="bill-date">' + relLabel(e.date) + '</div></div>' +
+        '<div class="bill-amount" style="color:var(--yellow)">pending</div></div>';
+    } else {
       var color = e.isIncome ? 'var(--green)' : 'var(--red)';
       var sign = e.isIncome ? '+' : '';
       billsEl.innerHTML += '<div class="bill-item"><div><div class="bill-name" style="color:' + color + '">' +
         e.label + '</div><div class="bill-date">' + relLabel(e.date) + '</div></div>' +
         '<div class="bill-amount" style="color:' + color + '">' + sign + fmt(e.amount) + '</div></div>';
-    });
+    }
+  });
 
-  if (upcomingEvents.filter(function(e) { return e.amount > 0; }).length === 0) {
+  if (visibleEvents.length === 0) {
     billsEl.innerHTML = '<div style="font-size:11px;color:var(--muted)">Nothing scheduled.</div>';
   }
 
@@ -925,6 +961,10 @@ function applyAction(action) {
         if (finState.checkingBalance !== null) finState.checkingBalance = r(finState.checkingBalance - due);
         finState.ccClosedAccrued = 0;
       }
+      break;
+    }
+    case 'set_cc_closed': {
+      finState.ccClosedAccrued = r(Number(action.value));
       break;
     }
   }
